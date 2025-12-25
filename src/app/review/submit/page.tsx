@@ -1,508 +1,495 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import {
-    ArrowLeft, Search, X, Camera, Check, ChevronRight,
-    ThumbsUp, ThumbsDown, MinusCircle, RefreshCw, ShoppingCart
-} from 'lucide-react';
-import { Toast } from 'antd-mobile';
-import {
-    reviewService,
-    type ReviewAttitude,
-    type DecisionPathType,
-    type UseScenario,
-    type IssueTag,
-    type SearchProductResult,
-} from '@/services/reviewService';
+import { useRouter } from 'next/navigation';
+import { Toast, ProgressBar } from 'antd-mobile';
+import { ArrowLeft, Search, ChevronRight, Star, CheckCircle, AlertCircle, Upload, ShieldCheck } from 'lucide-react';
+import { MobileContainer } from '@/components/layout/MobileContainer';
+import { reviewService, USE_DURATION_OPTIONS, ATTITUDE_OPTIONS, QUICK_TAGS, type SearchProduct } from '@/services/reviewService';
+import type { RecommendAttitude, UsageDuration } from '@/types/review';
+
+interface FormState {
+    product: SearchProduct | null;
+    useDuration: UsageDuration | null;
+    attitude: RecommendAttitude | null;
+    ratings: Record<string, number>;
+    content: string;
+    tags: string[];
+    stillInUse: boolean | null;
+    orderImage: string | null;
+}
+
+const RATING_DIMENSIONS = [
+    { key: 'antiColic', label: '防胀气效果' },
+    { key: 'babyAcceptance', label: '宝宝接受度' },
+    { key: 'easyToClean', label: '清洗难度' },
+    { key: 'valueForMoney', label: '性价比' },
+    { key: 'durability', label: '耐用性' },
+];
 
 export default function ReviewSubmitPage() {
     const router = useRouter();
-    const searchParams = useSearchParams();
-    const productIdFromUrl = searchParams.get('productId');
-
-    // 表单状态
-    const [selectedProduct, setSelectedProduct] = useState<SearchProductResult | null>(null);
-    const [attitude, setAttitude] = useState<ReviewAttitude | null>(null);
-    const [summary, setSummary] = useState('');
-    const [detail, setDetail] = useState('');
-    const [usageDays, setUsageDays] = useState<number | null>(null);
-    const [babyAge, setBabyAge] = useState<string | null>(null);
-    const [decisionPath, setDecisionPath] = useState<DecisionPathType | null>(null);
-    const [fromProduct, setFromProduct] = useState('');
-    const [selectedScenarios, setSelectedScenarios] = useState<string[]>([]);
-    const [selectedTags, setSelectedTags] = useState<string[]>([]);
-
-    // 数据
-    const [scenarios, setScenarios] = useState<UseScenario[]>([]);
-    const [positiveTags, setPositiveTags] = useState<IssueTag[]>([]);
-    const [negativeTags, setNegativeTags] = useState<IssueTag[]>([]);
-    const [babyAgeOptions, setBabyAgeOptions] = useState<string[]>([]);
-    const [usageDaysOptions, setUsageDaysOptions] = useState<{ value: number; label: string }[]>([]);
-
-    // 产品搜索
-    const [searchKeyword, setSearchKeyword] = useState('');
-    const [searchResults, setSearchResults] = useState<SearchProductResult[]>([]);
-    const [showSearch, setShowSearch] = useState(false);
-
-    // 提交状态
+    const [step, setStep] = useState(1);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState<SearchProduct[]>([]);
     const [submitting, setSubmitting] = useState(false);
 
-    // 初始化数据
+    const [form, setForm] = useState<FormState>({
+        product: null,
+        useDuration: null,
+        attitude: null,
+        ratings: { antiColic: 0, babyAcceptance: 0, easyToClean: 0, valueForMoney: 0, durability: 0 },
+        content: '',
+        tags: [],
+        stillInUse: null,
+        orderImage: null,
+    });
+
     useEffect(() => {
-        async function loadData() {
-            const [scen, posTags, negTags, ageOpts, daysOpts] = await Promise.all([
-                reviewService.getScenarios(),
-                reviewService.getPositiveTags(),
-                reviewService.getNegativeTags(),
-                reviewService.getBabyAgeOptions(),
-                reviewService.getUsageDaysOptions(),
-            ]);
-            setScenarios(scen);
-            setPositiveTags(posTags);
-            setNegativeTags(negTags);
-            setBabyAgeOptions(ageOpts);
-            setUsageDaysOptions(daysOpts);
+        reviewService.searchProducts('').then(setSearchResults);
+    }, []);
 
-            // 从URL预填产品
-            if (productIdFromUrl) {
-                const product = await reviewService.getProductById(productIdFromUrl);
-                if (product) {
-                    setSelectedProduct(product);
-                }
-            }
-        }
-        loadData();
-    }, [productIdFromUrl]);
-
-    // 搜索产品
-    const handleSearch = async (keyword: string) => {
-        setSearchKeyword(keyword);
-        if (keyword.trim()) {
-            const results = await reviewService.searchProducts(keyword);
-            setSearchResults(results);
-        } else {
-            setSearchResults([]);
-        }
+    const handleSearch = async (query: string) => {
+        setSearchQuery(query);
+        const results = await reviewService.searchProducts(query);
+        setSearchResults(results);
     };
 
-    // 选择产品
-    const handleSelectProduct = (product: SearchProductResult) => {
-        setSelectedProduct(product);
-        setShowSearch(false);
-        setSearchKeyword('');
-        setSearchResults([]);
+    const handleSelectProduct = (product: SearchProduct) => {
+        setForm({ ...form, product });
+        setStep(2);
     };
 
-    // 切换场景
-    const toggleScenario = (id: string) => {
-        setSelectedScenarios(prev =>
-            prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]
-        );
+    const handleRating = (key: string, score: number) => {
+        setForm({ ...form, ratings: { ...form.ratings, [key]: score } });
     };
 
-    // 切换标签
-    const toggleTag = (id: string) => {
-        setSelectedTags(prev =>
-            prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]
-        );
+    const toggleTag = (tag: string) => {
+        const tags = form.tags.includes(tag)
+            ? form.tags.filter(t => t !== tag)
+            : [...form.tags, tag];
+        setForm({ ...form, tags });
     };
 
-    // 提交评价
+    const handleOrderImageUpload = () => {
+        setForm({ ...form, orderImage: 'uploaded' });
+        Toast.show({ content: '订单截图已上传', icon: 'success' });
+    };
+
     const handleSubmit = async () => {
-        if (!selectedProduct) {
-            Toast.show({ content: '请选择产品', icon: 'fail' });
-            return;
-        }
-        if (!attitude) {
-            Toast.show({ content: '请选择推荐态度', icon: 'fail' });
-            return;
-        }
-        if (!summary.trim()) {
-            Toast.show({ content: '请填写一句话总结', icon: 'fail' });
-            return;
-        }
-
         setSubmitting(true);
-        const result = await reviewService.submitReview({
-            productId: selectedProduct.id,
-            attitude,
-            summary,
-            detail,
-            usageDays: usageDays || 0,
-            babyAge: babyAge || '',
-            decisionPath: {
-                type: decisionPath || 'first_buy',
-                fromProduct: fromProduct || undefined,
-            },
-            scenarios: selectedScenarios,
-            tags: selectedTags,
-        });
-        setSubmitting(false);
+        try {
+            const result = await reviewService.submitReview({
+                productId: form.product?.id,
+                attitude: form.attitude!,
+                summary: form.content.substring(0, 50),
+                content: form.content,
+                tags: form.tags,
+                stillInUse: form.stillInUse!,
+                ratings: form.ratings as any,
+                purchaseVerified: !!form.orderImage,
+            });
 
-        if (result.success) {
-            Toast.show({ content: '评价发布成功！', icon: 'success' });
-            router.back();
-        } else {
-            Toast.show({ content: result.error || '提交失败', icon: 'fail' });
+            if (result.success) {
+                const bonus = form.orderImage ? 20 : 0;
+                Toast.show({ content: `发布成功！获得${result.points + bonus}积分`, icon: 'success' });
+                router.push('/review');
+            }
+        } catch (error) {
+            Toast.show({ content: '发布失败，请重试', icon: 'fail' });
+        } finally {
+            setSubmitting(false);
         }
     };
 
-    // 当前显示的标签（根据态度）
-    const currentTags = attitude === 'recommend' ? positiveTags :
-        attitude === 'not-recommend' ? negativeTags :
-            [...positiveTags, ...negativeTags];
+    const totalSteps = 3;
+    const progress = (step / totalSteps) * 100;
+    const canSubmit = form.content.length >= 20;
 
     return (
-        <div className="max-w-[515px] mx-auto bg-gray-50 min-h-screen flex flex-col lg:shadow-xl">
-            {/* 顶部导航 */}
-            <div className="bg-white px-4 py-3 flex items-center justify-between sticky top-0 z-50 border-b border-gray-100">
-                <button onClick={() => router.back()}>
-                    <ArrowLeft className="w-5 h-5" />
-                </button>
-                <span className="font-semibold">发布评价</span>
-                <div className="w-5" />
-            </div>
+        <MobileContainer>
+            <div style={{ minHeight: '100vh', background: '#F7F8FA', display: 'flex', flexDirection: 'column' }}>
+                {/* Header */}
+                <div style={{
+                    background: 'white',
+                    padding: '12px 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    borderBottom: '1px solid #F3F4F6',
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 50,
+                }}>
+                    <button onClick={() => step > 1 ? setStep(step - 1) : router.back()} style={{ background: 'none', border: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <ArrowLeft size={20} color="#374151" />
+                        <span style={{ fontSize: '17px', fontWeight: 'bold', color: '#1F2937' }}>发布评价</span>
+                    </button>
+                    <button onClick={() => reviewService.saveDraft(form as any).then(() => Toast.show({ content: '已保存草稿' }))}
+                        style={{ background: 'none', border: 'none', fontSize: '14px', color: '#6B7280' }}>
+                        草稿
+                    </button>
+                </div>
 
-            {/* 产品搜索弹层 */}
-            {showSearch && (
-                <div className="fixed inset-0 bg-white z-50 flex flex-col">
-                    <div className="px-4 py-3 flex items-center gap-3 border-b">
-                        <button onClick={() => setShowSearch(false)}>
-                            <ArrowLeft className="w-5 h-5" />
-                        </button>
-                        <div className="flex-1 bg-gray-100 rounded-xl px-3 py-2 flex items-center gap-2">
-                            <Search className="w-4 h-4 text-gray-400" />
-                            <input
-                                type="text"
-                                value={searchKeyword}
-                                onChange={(e) => handleSearch(e.target.value)}
-                                placeholder="搜索产品名称或品牌"
-                                className="flex-1 bg-transparent outline-none text-sm"
-                                autoFocus
-                            />
-                            {searchKeyword && (
-                                <button onClick={() => handleSearch('')}>
-                                    <X className="w-4 h-4 text-gray-400" />
-                                </button>
-                            )}
-                        </div>
+                {/* Progress */}
+                <div style={{ background: 'white', padding: '12px 16px', borderBottom: '1px solid #F3F4F6' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#6B7280', marginBottom: '8px' }}>
+                        <span>第 {step} 步，共 {totalSteps} 步</span>
                     </div>
-                    <div className="flex-1 overflow-y-auto p-4">
-                        {searchResults.length > 0 ? (
-                            <div className="space-y-2">
-                                {searchResults.map(product => (
+                    <ProgressBar percent={progress} style={{ '--track-width': '6px', '--fill-color': 'linear-gradient(90deg, #3B82F6, #8B5CF6)' }} />
+                </div>
+
+                {/* Content */}
+                <div style={{ flex: 1, overflow: 'auto', padding: '16px' }}>
+
+                    {/* Step 1: Select Product */}
+                    {step === 1 && (
+                        <div>
+                            <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1F2937', marginBottom: '8px' }}>选择产品</h2>
+                            <p style={{ fontSize: '14px', color: '#6B7280', marginBottom: '16px' }}>搜索你要评价的产品</p>
+
+                            <div style={{ position: 'relative', marginBottom: '16px' }}>
+                                <Search size={18} color="#9CA3AF" style={{ position: 'absolute', left: '12px', top: '12px' }} />
+                                <input
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={(e) => handleSearch(e.target.value)}
+                                    placeholder="输入产品名称搜索..."
+                                    style={{
+                                        width: '100%',
+                                        padding: '12px 12px 12px 40px',
+                                        border: '1px solid #E5E7EB',
+                                        borderRadius: '12px',
+                                        fontSize: '14px',
+                                        outline: 'none',
+                                    }}
+                                />
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                {searchResults.map((product) => (
                                     <button
                                         key={product.id}
                                         onClick={() => handleSelectProduct(product)}
-                                        className="w-full bg-white rounded-xl p-3 flex items-center gap-3 border border-gray-200 text-left"
+                                        style={{
+                                            background: 'white',
+                                            border: '1px solid #E5E7EB',
+                                            borderRadius: '12px',
+                                            padding: '12px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '12px',
+                                            cursor: 'pointer',
+                                            textAlign: 'left',
+                                        }}
                                     >
-                                        <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center text-2xl">
+                                        <div style={{ width: '48px', height: '48px', background: '#F9FAFB', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>
                                             {product.image}
                                         </div>
-                                        <div className="flex-1">
-                                            <div className="text-xs text-gray-500">{product.brand}</div>
-                                            <div className="text-sm font-medium text-gray-800">{product.name}</div>
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ fontSize: '11px', color: '#9CA3AF' }}>{product.brand}</div>
+                                            <div style={{ fontSize: '14px', fontWeight: '500', color: '#1F2937' }}>{product.name}</div>
                                         </div>
-                                        <ChevronRight className="w-4 h-4 text-gray-400" />
+                                        <ChevronRight size={18} color="#D1D5DB" />
                                     </button>
                                 ))}
                             </div>
-                        ) : searchKeyword ? (
-                            <div className="text-center text-gray-400 py-10">
-                                未找到相关产品
-                            </div>
-                        ) : (
-                            <div className="text-center text-gray-400 py-10">
-                                输入产品名称或品牌搜索
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
+                        </div>
+                    )}
 
-            {/* 表单内容 */}
-            <div className="flex-1 overflow-y-auto pb-24">
-                {/* 选择产品 */}
-                <div className="bg-white p-4 mb-3">
-                    <div className="text-sm font-semibold text-gray-800 mb-3">
-                        选择产品 <span className="text-red-500">*</span>
-                    </div>
-                    {selectedProduct ? (
-                        <div className="flex items-center gap-3 bg-gray-50 rounded-xl p-3">
-                            <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center text-2xl border border-gray-100">
-                                {selectedProduct.image}
+                    {/* Step 2: Rate */}
+                    {step === 2 && (
+                        <div>
+                            <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1F2937', marginBottom: '8px' }}>产品评分</h2>
+                            <p style={{ fontSize: '14px', color: '#6B7280', marginBottom: '16px' }}>你的态度和分维度评分</p>
+
+                            {form.product && (
+                                <div style={{ background: '#F9FAFB', borderRadius: '12px', padding: '12px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    <div style={{ width: '40px', height: '40px', background: 'white', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+                                        {form.product.image}
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontSize: '11px', color: '#9CA3AF' }}>{form.product.brand}</div>
+                                        <div style={{ fontSize: '13px', fontWeight: '500', color: '#1F2937' }}>{form.product.name}</div>
+                                    </div>
+                                    <button onClick={() => setStep(1)} style={{ fontSize: '13px', color: '#3B82F6', background: 'none', border: 'none' }}>更换</button>
+                                </div>
+                            )}
+
+                            {/* Attitude */}
+                            <div style={{ marginBottom: '24px' }}>
+                                <div style={{ fontSize: '15px', fontWeight: '600', color: '#1F2937', marginBottom: '12px' }}>你的态度 <span style={{ color: '#EF4444' }}>*</span></div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+                                    {ATTITUDE_OPTIONS.map((opt) => (
+                                        <button
+                                            key={opt.value}
+                                            onClick={() => setForm({ ...form, attitude: opt.value })}
+                                            style={{
+                                                padding: '16px 8px',
+                                                borderRadius: '12px',
+                                                border: form.attitude === opt.value ? '2px solid' : '1px solid #E5E7EB',
+                                                borderColor: form.attitude === opt.value ? (opt.color === 'green' ? '#10B981' : opt.color === 'red' ? '#EF4444' : '#6B7280') : '#E5E7EB',
+                                                background: form.attitude === opt.value ? (opt.color === 'green' ? '#ECFDF5' : opt.color === 'red' ? '#FEF2F2' : '#F9FAFB') : 'white',
+                                                cursor: 'pointer',
+                                            }}
+                                        >
+                                            <div style={{ fontSize: '28px', marginBottom: '4px' }}>{opt.icon}</div>
+                                            <div style={{ fontSize: '14px', fontWeight: '600', color: '#1F2937' }}>{opt.label}</div>
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
-                            <div className="flex-1">
-                                <div className="text-xs text-gray-500">{selectedProduct.brand}</div>
-                                <div className="text-sm font-medium text-gray-800">{selectedProduct.name}</div>
+
+                            {/* Dimension Ratings */}
+                            <div style={{ marginBottom: '24px' }}>
+                                {RATING_DIMENSIONS.map((dim) => (
+                                    <div key={dim.key} style={{ marginBottom: '16px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                            <span style={{ fontSize: '14px', color: '#374151' }}>{dim.label}</span>
+                                            <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#3B82F6' }}>{form.ratings[dim.key]}.0</span>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                            {[1, 2, 3, 4, 5].map((score) => (
+                                                <button key={score} onClick={() => handleRating(dim.key, score)} style={{ flex: 1, background: 'none', border: 'none', cursor: 'pointer' }}>
+                                                    <Star size={28} color={score <= form.ratings[dim.key] ? '#FBBF24' : '#E5E7EB'} fill={score <= form.ratings[dim.key] ? '#FBBF24' : 'none'} />
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
+
+                            {/* Use Duration */}
+                            <div style={{ marginBottom: '24px' }}>
+                                <div style={{ fontSize: '15px', fontWeight: '600', color: '#1F2937', marginBottom: '12px' }}>使用时长 <span style={{ color: '#EF4444' }}>*</span></div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+                                    {USE_DURATION_OPTIONS.map((opt) => (
+                                        <button
+                                            key={opt.value}
+                                            onClick={() => setForm({ ...form, useDuration: opt.value })}
+                                            style={{
+                                                padding: '12px',
+                                                borderRadius: '12px',
+                                                border: form.useDuration === opt.value ? '2px solid #3B82F6' : '1px solid #E5E7EB',
+                                                background: form.useDuration === opt.value ? '#EFF6FF' : 'white',
+                                                cursor: 'pointer',
+                                                textAlign: 'left',
+                                            }}
+                                        >
+                                            <div style={{ fontSize: '14px', fontWeight: '600', color: '#1F2937' }}>{opt.label}</div>
+                                            <div style={{ fontSize: '11px', color: '#3B82F6' }}>{opt.badge}</div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
                             <button
-                                onClick={() => setShowSearch(true)}
-                                className="text-xs text-blue-600"
+                                onClick={() => setStep(3)}
+                                disabled={!form.attitude || !form.useDuration}
+                                style={{
+                                    width: '100%',
+                                    padding: '14px',
+                                    borderRadius: '12px',
+                                    border: 'none',
+                                    background: form.attitude && form.useDuration ? 'linear-gradient(90deg, #3B82F6, #2563EB)' : '#E5E7EB',
+                                    color: form.attitude && form.useDuration ? 'white' : '#9CA3AF',
+                                    fontSize: '15px',
+                                    fontWeight: '600',
+                                    cursor: form.attitude && form.useDuration ? 'pointer' : 'not-allowed',
+                                }}
                             >
-                                更换
+                                下一步
                             </button>
                         </div>
-                    ) : (
-                        <button
-                            onClick={() => setShowSearch(true)}
-                            className="w-full bg-gray-50 rounded-xl p-4 flex items-center justify-center gap-2 text-gray-500 border-2 border-dashed border-gray-200"
-                        >
-                            <Search className="w-4 h-4" />
-                            <span className="text-sm">搜索选择产品</span>
-                        </button>
+                    )}
+
+                    {/* Step 3: Write (Simplified - single content field + order upload) */}
+                    {step === 3 && (
+                        <div>
+                            <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1F2937', marginBottom: '8px' }}>写评价</h2>
+                            <p style={{ fontSize: '14px', color: '#6B7280', marginBottom: '16px' }}>分享你的真实体验</p>
+
+                            {/* Single Content Field */}
+                            <div style={{ marginBottom: '16px' }}>
+                                <div style={{ fontSize: '15px', fontWeight: '600', color: '#1F2937', marginBottom: '8px' }}>评价内容 <span style={{ color: '#EF4444' }}>*</span></div>
+                                <textarea
+                                    value={form.content}
+                                    onChange={(e) => setForm({ ...form, content: e.target.value })}
+                                    placeholder="分享使用感受、宝宝反应、优缺点... (至少20字)"
+                                    style={{
+                                        width: '100%',
+                                        padding: '12px',
+                                        border: '1px solid #E5E7EB',
+                                        borderRadius: '12px',
+                                        fontSize: '14px',
+                                        outline: 'none',
+                                        height: '140px',
+                                        resize: 'none',
+                                    }}
+                                />
+                                <div style={{ fontSize: '11px', color: form.content.length >= 20 ? '#10B981' : '#9CA3AF', textAlign: 'right', marginTop: '4px' }}>
+                                    {form.content.length}/500 {form.content.length < 20 && `(还需${20 - form.content.length}字)`}
+                                </div>
+                            </div>
+
+                            {/* Order Image Upload */}
+                            <div style={{ marginBottom: '20px' }}>
+                                <div style={{ fontSize: '15px', fontWeight: '600', color: '#1F2937', marginBottom: '8px' }}>
+                                    上传订单截图 <span style={{ fontSize: '12px', fontWeight: 'normal', color: '#6B7280' }}>（选填，+20积分）</span>
+                                </div>
+                                <button
+                                    onClick={handleOrderImageUpload}
+                                    style={{
+                                        width: '100%',
+                                        padding: '20px',
+                                        border: form.orderImage ? '2px solid #10B981' : '2px dashed #D1D5DB',
+                                        borderRadius: '12px',
+                                        background: form.orderImage ? '#ECFDF5' : 'white',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        gap: '8px',
+                                        cursor: 'pointer',
+                                    }}
+                                >
+                                    {form.orderImage ? (
+                                        <>
+                                            <ShieldCheck size={28} color="#10B981" />
+                                            <span style={{ fontSize: '14px', color: '#059669', fontWeight: '600' }}>已上传订单截图</span>
+                                            <span style={{ fontSize: '11px', color: '#6B7280' }}>获得认证徽章 + 20积分</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Upload size={28} color="#9CA3AF" />
+                                            <span style={{ fontSize: '14px', color: '#6B7280' }}>点击上传订单截图</span>
+                                            <span style={{ fontSize: '11px', color: '#9CA3AF' }}>真实购买用户更受信任</span>
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+
+                            {/* Quick Tags */}
+                            <div style={{ marginBottom: '16px' }}>
+                                <div style={{ fontSize: '15px', fontWeight: '600', color: '#1F2937', marginBottom: '12px' }}>快速标签</div>
+                                <div style={{ marginBottom: '12px' }}>
+                                    <div style={{ fontSize: '11px', color: '#059669', marginBottom: '8px' }}>优点</div>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                        {QUICK_TAGS.positive.map((tag) => (
+                                            <button
+                                                key={tag}
+                                                onClick={() => toggleTag(tag)}
+                                                style={{
+                                                    padding: '6px 12px',
+                                                    borderRadius: '16px',
+                                                    border: 'none',
+                                                    background: form.tags.includes(tag) ? '#10B981' : '#ECFDF5',
+                                                    color: form.tags.includes(tag) ? 'white' : '#059669',
+                                                    fontSize: '12px',
+                                                    cursor: 'pointer',
+                                                }}
+                                            >
+                                                {tag}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: '11px', color: '#DC2626', marginBottom: '8px' }}>缺点</div>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                        {QUICK_TAGS.negative.map((tag) => (
+                                            <button
+                                                key={tag}
+                                                onClick={() => toggleTag(tag)}
+                                                style={{
+                                                    padding: '6px 12px',
+                                                    borderRadius: '16px',
+                                                    border: 'none',
+                                                    background: form.tags.includes(tag) ? '#EF4444' : '#FEF2F2',
+                                                    color: form.tags.includes(tag) ? 'white' : '#DC2626',
+                                                    fontSize: '12px',
+                                                    cursor: 'pointer',
+                                                }}
+                                            >
+                                                {tag}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Still in use */}
+                            <div style={{ marginBottom: '24px' }}>
+                                <div style={{ fontSize: '15px', fontWeight: '600', color: '#1F2937', marginBottom: '12px' }}>现在还在用吗？</div>
+                                <div style={{ display: 'flex', gap: '12px' }}>
+                                    <button
+                                        onClick={() => setForm({ ...form, stillInUse: true })}
+                                        style={{
+                                            flex: 1,
+                                            padding: '12px',
+                                            borderRadius: '12px',
+                                            border: form.stillInUse === true ? '2px solid #10B981' : '1px solid #E5E7EB',
+                                            background: form.stillInUse === true ? '#ECFDF5' : 'white',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '8px',
+                                            cursor: 'pointer',
+                                        }}
+                                    >
+                                        <CheckCircle size={18} color="#10B981" />
+                                        <span style={{ fontSize: '14px', color: '#1F2937' }}>仍在使用</span>
+                                    </button>
+                                    <button
+                                        onClick={() => setForm({ ...form, stillInUse: false })}
+                                        style={{
+                                            flex: 1,
+                                            padding: '12px',
+                                            borderRadius: '12px',
+                                            border: form.stillInUse === false ? '2px solid #EF4444' : '1px solid #E5E7EB',
+                                            background: form.stillInUse === false ? '#FEF2F2' : 'white',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '8px',
+                                            cursor: 'pointer',
+                                        }}
+                                    >
+                                        <AlertCircle size={18} color="#EF4444" />
+                                        <span style={{ fontSize: '14px', color: '#1F2937' }}>已弃用</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Submit */}
+                            <button
+                                onClick={handleSubmit}
+                                disabled={submitting || !canSubmit}
+                                style={{
+                                    width: '100%',
+                                    padding: '14px',
+                                    borderRadius: '12px',
+                                    border: 'none',
+                                    background: canSubmit ? 'linear-gradient(90deg, #3B82F6, #8B5CF6)' : '#E5E7EB',
+                                    color: canSubmit ? 'white' : '#9CA3AF',
+                                    fontSize: '15px',
+                                    fontWeight: '600',
+                                    cursor: canSubmit ? 'pointer' : 'not-allowed',
+                                }}
+                            >
+                                {submitting ? '发布中...' : '发布评价'}
+                            </button>
+
+                            {/* Reward hint */}
+                            <div style={{ marginTop: '16px', background: '#FEF3C7', borderRadius: '12px', padding: '12px', textAlign: 'center' }}>
+                                <span style={{ fontSize: '13px', color: '#92400E' }}>
+                                    🎁 发布评价 <strong>+50积分</strong>
+                                    {form.orderImage && <> + 订单认证 <strong>+20积分</strong></>}
+                                </span>
+                            </div>
+                        </div>
                     )}
                 </div>
-
-                {/* 推荐态度 */}
-                <div className="bg-white p-4 mb-3">
-                    <div className="text-sm font-semibold text-gray-800 mb-3">
-                        推荐态度 <span className="text-red-500">*</span>
-                    </div>
-                    <div className="flex gap-2">
-                        <button
-                            onClick={() => setAttitude('recommend')}
-                            className={`flex-1 py-3 rounded-xl flex items-center justify-center gap-2 transition-all ${attitude === 'recommend'
-                                    ? 'bg-green-500 text-white'
-                                    : 'bg-gray-100 text-gray-600'
-                                }`}
-                        >
-                            <ThumbsUp className="w-5 h-5" />
-                            <span className="font-medium">推荐</span>
-                        </button>
-                        <button
-                            onClick={() => setAttitude('optional')}
-                            className={`flex-1 py-3 rounded-xl flex items-center justify-center gap-2 transition-all ${attitude === 'optional'
-                                    ? 'bg-gray-500 text-white'
-                                    : 'bg-gray-100 text-gray-600'
-                                }`}
-                        >
-                            <MinusCircle className="w-5 h-5" />
-                            <span className="font-medium">可选</span>
-                        </button>
-                        <button
-                            onClick={() => setAttitude('not-recommend')}
-                            className={`flex-1 py-3 rounded-xl flex items-center justify-center gap-2 transition-all ${attitude === 'not-recommend'
-                                    ? 'bg-red-500 text-white'
-                                    : 'bg-gray-100 text-gray-600'
-                                }`}
-                        >
-                            <ThumbsDown className="w-5 h-5" />
-                            <span className="font-medium">不推荐</span>
-                        </button>
-                    </div>
-                </div>
-
-                {/* 一句话总结 */}
-                <div className="bg-white p-4 mb-3">
-                    <div className="text-sm font-semibold text-gray-800 mb-3">
-                        一句话总结 <span className="text-red-500">*</span>
-                    </div>
-                    <input
-                        type="text"
-                        value={summary}
-                        onChange={(e) => setSummary(e.target.value)}
-                        placeholder="例如：防胀气效果好，宝宝接受度高"
-                        className="w-full bg-gray-50 rounded-xl px-4 py-3 text-sm outline-none"
-                        maxLength={50}
-                    />
-                    <div className="text-right text-xs text-gray-400 mt-1">{summary.length}/50</div>
-                </div>
-
-                {/* 详细评价 */}
-                <div className="bg-white p-4 mb-3">
-                    <div className="text-sm font-semibold text-gray-800 mb-3">详细评价（选填）</div>
-                    <textarea
-                        value={detail}
-                        onChange={(e) => setDetail(e.target.value)}
-                        placeholder="分享你的真实使用体验..."
-                        className="w-full bg-gray-50 rounded-xl px-4 py-3 text-sm outline-none resize-none h-24"
-                        maxLength={500}
-                    />
-                    <div className="text-right text-xs text-gray-400 mt-1">{detail.length}/500</div>
-                </div>
-
-                {/* 上传图片 */}
-                <div className="bg-white p-4 mb-3">
-                    <div className="text-sm font-semibold text-gray-800 mb-3">上传图片（选填）</div>
-                    <div className="flex gap-2">
-                        <button className="w-20 h-20 bg-gray-50 rounded-xl flex flex-col items-center justify-center gap-1 border-2 border-dashed border-gray-200">
-                            <Camera className="w-6 h-6 text-gray-400" />
-                            <span className="text-xs text-gray-400">添加图片</span>
-                        </button>
-                    </div>
-                </div>
-
-                {/* 使用信息 */}
-                <div className="bg-white p-4 mb-3">
-                    <div className="text-sm font-semibold text-gray-800 mb-3">使用信息</div>
-
-                    {/* 宝宝月龄 */}
-                    <div className="mb-4">
-                        <div className="text-xs text-gray-500 mb-2">宝宝月龄</div>
-                        <div className="flex flex-wrap gap-2">
-                            {babyAgeOptions.map(age => (
-                                <button
-                                    key={age}
-                                    onClick={() => setBabyAge(age)}
-                                    className={`px-3 py-1.5 rounded-full text-xs transition-all ${babyAge === age
-                                            ? 'bg-blue-500 text-white'
-                                            : 'bg-gray-100 text-gray-600'
-                                        }`}
-                                >
-                                    {age}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* 使用时长 */}
-                    <div>
-                        <div className="text-xs text-gray-500 mb-2">已使用时长</div>
-                        <div className="flex flex-wrap gap-2">
-                            {usageDaysOptions.map(opt => (
-                                <button
-                                    key={opt.value}
-                                    onClick={() => setUsageDays(opt.value)}
-                                    className={`px-3 py-1.5 rounded-full text-xs transition-all ${usageDays === opt.value
-                                            ? 'bg-blue-500 text-white'
-                                            : 'bg-gray-100 text-gray-600'
-                                        }`}
-                                >
-                                    {opt.label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
-                {/* 决策路径 */}
-                <div className="bg-white p-4 mb-3">
-                    <div className="text-sm font-semibold text-gray-800 mb-3">决策路径</div>
-                    <div className="space-y-2">
-                        <button
-                            onClick={() => setDecisionPath('first_buy')}
-                            className={`w-full p-3 rounded-xl flex items-center gap-3 transition-all ${decisionPath === 'first_buy'
-                                    ? 'bg-blue-50 border-2 border-blue-500'
-                                    : 'bg-gray-50 border-2 border-transparent'
-                                }`}
-                        >
-                            <ShoppingCart className={`w-5 h-5 ${decisionPath === 'first_buy' ? 'text-blue-500' : 'text-gray-400'}`} />
-                            <span className={`text-sm ${decisionPath === 'first_buy' ? 'text-blue-700' : 'text-gray-600'}`}>
-                                首次购买这个产品
-                            </span>
-                        </button>
-                        <button
-                            onClick={() => setDecisionPath('switched_from')}
-                            className={`w-full p-3 rounded-xl flex items-center gap-3 transition-all ${decisionPath === 'switched_from'
-                                    ? 'bg-blue-50 border-2 border-blue-500'
-                                    : 'bg-gray-50 border-2 border-transparent'
-                                }`}
-                        >
-                            <RefreshCw className={`w-5 h-5 ${decisionPath === 'switched_from' ? 'text-blue-500' : 'text-gray-400'}`} />
-                            <span className={`text-sm ${decisionPath === 'switched_from' ? 'text-blue-700' : 'text-gray-600'}`}>
-                                从其他产品换过来
-                            </span>
-                        </button>
-                        {decisionPath === 'switched_from' && (
-                            <input
-                                type="text"
-                                value={fromProduct}
-                                onChange={(e) => setFromProduct(e.target.value)}
-                                placeholder="从哪个产品换过来？"
-                                className="w-full bg-white rounded-xl px-4 py-3 text-sm outline-none border border-gray-200 ml-8"
-                                style={{ width: 'calc(100% - 2rem)' }}
-                            />
-                        )}
-                        <button
-                            onClick={() => setDecisionPath('repurchased')}
-                            className={`w-full p-3 rounded-xl flex items-center gap-3 transition-all ${decisionPath === 'repurchased'
-                                    ? 'bg-green-50 border-2 border-green-500'
-                                    : 'bg-gray-50 border-2 border-transparent'
-                                }`}
-                        >
-                            <Check className={`w-5 h-5 ${decisionPath === 'repurchased' ? 'text-green-500' : 'text-gray-400'}`} />
-                            <span className={`text-sm ${decisionPath === 'repurchased' ? 'text-green-700' : 'text-gray-600'}`}>
-                                回购用户
-                            </span>
-                        </button>
-                        <button
-                            onClick={() => setDecisionPath('idle')}
-                            className={`w-full p-3 rounded-xl flex items-center gap-3 transition-all ${decisionPath === 'idle'
-                                    ? 'bg-red-50 border-2 border-red-500'
-                                    : 'bg-gray-50 border-2 border-transparent'
-                                }`}
-                        >
-                            <X className={`w-5 h-5 ${decisionPath === 'idle' ? 'text-red-500' : 'text-gray-400'}`} />
-                            <span className={`text-sm ${decisionPath === 'idle' ? 'text-red-700' : 'text-gray-600'}`}>
-                                已闲置
-                            </span>
-                        </button>
-                    </div>
-                </div>
-
-                {/* 使用场景 */}
-                <div className="bg-white p-4 mb-3">
-                    <div className="text-sm font-semibold text-gray-800 mb-3">使用场景（选填）</div>
-                    <div className="flex flex-wrap gap-2">
-                        {scenarios.map(scenario => (
-                            <button
-                                key={scenario.id}
-                                onClick={() => toggleScenario(scenario.id)}
-                                className={`px-3 py-1.5 rounded-full text-xs flex items-center gap-1 transition-all ${selectedScenarios.includes(scenario.id)
-                                        ? 'bg-purple-500 text-white'
-                                        : 'bg-gray-100 text-gray-600'
-                                    }`}
-                            >
-                                <span>{scenario.icon}</span>
-                                <span>{scenario.label}</span>
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                {/* 标签选择 */}
-                {attitude && (
-                    <div className="bg-white p-4 mb-3">
-                        <div className="text-sm font-semibold text-gray-800 mb-3">
-                            {attitude === 'recommend' ? '优点标签' : attitude === 'not-recommend' ? '缺点标签' : '特点标签'}
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                            {currentTags.map(tag => (
-                                <button
-                                    key={tag.id}
-                                    onClick={() => toggleTag(tag.id)}
-                                    className={`px-3 py-1.5 rounded-full text-xs transition-all ${selectedTags.includes(tag.id)
-                                            ? tag.type === 'positive'
-                                                ? 'bg-green-500 text-white'
-                                                : 'bg-red-500 text-white'
-                                            : tag.type === 'positive'
-                                                ? 'bg-green-50 text-green-700'
-                                                : 'bg-red-50 text-red-700'
-                                        }`}
-                                >
-                                    {tag.label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                )}
             </div>
-
-            {/* 底部提交按钮 */}
-            <div className="bg-white border-t border-gray-200 px-4 py-3 fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[515px] z-50">
-                <button
-                    onClick={handleSubmit}
-                    disabled={submitting || !selectedProduct || !attitude || !summary.trim()}
-                    className={`w-full py-3 rounded-xl font-semibold text-white transition-all ${submitting || !selectedProduct || !attitude || !summary.trim()
-                            ? 'bg-gray-300'
-                            : 'bg-gradient-to-r from-blue-500 to-purple-500'
-                        }`}
-                >
-                    {submitting ? '提交中...' : '发布评价'}
-                </button>
-            </div>
-        </div>
+        </MobileContainer>
     );
 }

@@ -1,189 +1,105 @@
 /**
- * 评价服务 - 发布评价
+ * 评价提交服务层
+ * 所有数据获取逻辑封装为函数，Page 只负责调用
  */
+
+import { API_CONFIG, buildUrl } from '@/config/apiConfig';
+import {
+    MOCK_REVIEW_CONFIG,
+    MOCK_SEARCH_PRODUCTS,
+    MOCK_USE_DURATION_OPTIONS,
+    MOCK_ATTITUDE_OPTIONS,
+    MOCK_QUICK_TAGS,
+} from '@/mocks/reviewMock';
+import type { RecommendAttitude, UsageDuration } from '@/types/review';
 
 // ============ 类型定义 ============
 
-/** 评价态度 */
-export type ReviewAttitude = 'recommend' | 'not-recommend' | 'optional';
-
-/** 决策路径类型 */
-export type DecisionPathType = 'switched_from' | 'first_buy' | 'repurchased' | 'idle';
-
-/** 使用场景 */
-export interface UseScenario {
-    id: string;
-    label: string;
-    icon: string;
+export interface ReviewConfig {
+    minContentLength: number;
+    maxContentLength: number;
+    maxImages: number;
+    enableOrderVerification: boolean;
+    orderVerificationBonus: number;
+    basePoints: number;
 }
 
-/** 常见问题标签 */
-export interface IssueTag {
-    id: string;
-    label: string;
-    type: 'positive' | 'negative';
-}
-
-/** 提交评价数据 */
-export interface ReviewSubmitData {
-    productId: string;
-    attitude: ReviewAttitude;
-    summary: string;
-    detail: string;
-    usageDays: number;
-    babyAge: string;
-    decisionPath: {
-        type: DecisionPathType;
-        fromProduct?: string;
-        reason?: string;
-    };
-    scenarios: string[];
-    tags: string[];
-    images?: string[];
-}
-
-/** 搜索产品结果 */
-export interface SearchProductResult {
+export interface SearchProduct {
     id: string;
     name: string;
     brand: string;
     image: string;
 }
 
-// ============ Mock 数据 ============
+export interface ReviewSubmitData {
+    productId?: string;
+    attitude: RecommendAttitude;
+    summary: string;
+    content: string;
+    tags: string[];
+    stillInUse: boolean;
+    ratings: Record<string, number>;
+    purchaseVerified?: boolean;
+}
 
-const USE_SCENARIOS: UseScenario[] = [
-    { id: 'night-feed', label: '夜奶', icon: '🌙' },
-    { id: 'out', label: '外出携带', icon: '🚗' },
-    { id: 'mix-feed', label: '混合喂养', icon: '🍼' },
-    { id: 'transition', label: '母乳转奶', icon: '🤱' },
-    { id: 'colic', label: '防胀气', icon: '😣' },
-    { id: 'clean', label: '易清洗', icon: '🧹' },
-];
+export interface ReviewSubmitResult {
+    success: boolean;
+    reviewId?: string;
+    points: number;
+}
 
-const POSITIVE_TAGS: IssueTag[] = [
-    { id: 'anti-colic', label: '防胀气有效', type: 'positive' },
-    { id: 'easy-clean', label: '易清洗', type: 'positive' },
-    { id: 'baby-accept', label: '宝宝接受度高', type: 'positive' },
-    { id: 'quality', label: '质量好', type: 'positive' },
-    { id: 'value', label: '性价比高', type: 'positive' },
-    { id: 'soft-nipple', label: '奶嘴柔软', type: 'positive' },
-];
+// 导出常量供 Page 使用
+export const USE_DURATION_OPTIONS = MOCK_USE_DURATION_OPTIONS;
+export const ATTITUDE_OPTIONS = MOCK_ATTITUDE_OPTIONS;
+export const QUICK_TAGS = MOCK_QUICK_TAGS;
 
-const NEGATIVE_TAGS: IssueTag[] = [
-    { id: 'still-colic', label: '仍然胀气', type: 'negative' },
-    { id: 'hard-clean', label: '清洗麻烦', type: 'negative' },
-    { id: 'baby-refuse', label: '宝宝不接受', type: 'negative' },
-    { id: 'leak', label: '容易漏奶', type: 'negative' },
-    { id: 'expensive', label: '价格偏贵', type: 'negative' },
-    { id: 'hard-nipple', label: '奶嘴偏硬', type: 'negative' },
-];
-
-const BABY_AGE_OPTIONS = [
-    '0-1个月', '1-3个月', '3-6个月', '6-12个月', '12个月以上'
-];
-
-const USAGE_DAYS_OPTIONS = [
-    { value: 7, label: '7天以内' },
-    { value: 30, label: '1个月' },
-    { value: 60, label: '2个月' },
-    { value: 90, label: '3个月以上' },
-];
-
-const MOCK_SEARCH_RESULTS: SearchProductResult[] = [
-    { id: 'comotomo-250', name: 'Comotomo可么多么硅胶奶瓶 250ml', brand: 'Comotomo', image: '🍼' },
-    { id: 'dr-browns-240', name: 'Dr.Brown布朗博士防胀气奶瓶 240ml', brand: "Dr.Brown's", image: '🍼' },
-    { id: 'nuk-wide', name: 'NUK自然实感宽口径奶瓶', brand: 'NUK', image: '🍼' },
-    { id: 'pigeon-glass', name: '贝亲经典玻璃奶瓶 240ml', brand: '贝亲', image: '🍼' },
-];
-
-// ============ 服务类 ============
+// ============ Service ============
 
 class ReviewService {
-    /**
-     * 获取使用场景列表
-     */
-    async getScenarios(): Promise<UseScenario[]> {
-        return USE_SCENARIOS;
+    private useMock = true;
+
+    async getConfig(): Promise<ReviewConfig> {
+        return MOCK_REVIEW_CONFIG;
     }
 
-    /**
-     * 获取正面标签
-     */
-    async getPositiveTags(): Promise<IssueTag[]> {
-        return POSITIVE_TAGS;
-    }
-
-    /**
-     * 获取负面标签
-     */
-    async getNegativeTags(): Promise<IssueTag[]> {
-        return NEGATIVE_TAGS;
-    }
-
-    /**
-     * 获取宝宝月龄选项
-     */
-    async getBabyAgeOptions(): Promise<string[]> {
-        return BABY_AGE_OPTIONS;
-    }
-
-    /**
-     * 获取使用天数选项
-     */
-    async getUsageDaysOptions(): Promise<{ value: number; label: string }[]> {
-        return USAGE_DAYS_OPTIONS;
-    }
-
-    /**
-     * 搜索产品
-     */
-    async searchProducts(keyword: string): Promise<SearchProductResult[]> {
-        if (!keyword.trim()) return [];
-        const lower = keyword.toLowerCase();
-        return MOCK_SEARCH_RESULTS.filter(p =>
-            p.name.toLowerCase().includes(lower) ||
-            p.brand.toLowerCase().includes(lower)
-        );
-    }
-
-    /**
-     * 获取产品详情（用于预填）
-     */
-    async getProductById(id: string): Promise<SearchProductResult | null> {
-        return MOCK_SEARCH_RESULTS.find(p => p.id === id) || null;
-    }
-
-    /**
-     * 提交评价
-     */
-    async submitReview(data: ReviewSubmitData): Promise<{ success: boolean; reviewId?: string; error?: string }> {
-        // 模拟提交
-        console.log('提交评价数据:', data);
-
-        // 验证
-        if (!data.productId) {
-            return { success: false, error: '请选择产品' };
+    async searchProducts(query: string): Promise<SearchProduct[]> {
+        if (this.useMock) {
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    const filtered = query
+                        ? MOCK_SEARCH_PRODUCTS.filter(p =>
+                            p.name.toLowerCase().includes(query.toLowerCase()) ||
+                            p.brand.toLowerCase().includes(query.toLowerCase())
+                        )
+                        : MOCK_SEARCH_PRODUCTS;
+                    resolve(filtered);
+                }, 200);
+            });
         }
-        if (!data.summary.trim()) {
-            return { success: false, error: '请填写一句话总结' };
-        }
-        if (data.summary.length < 5) {
-            return { success: false, error: '一句话总结至少5个字' };
-        }
+        const response = await fetch(buildUrl(`${API_CONFIG.ENDPOINTS.PRODUCTS}?q=${query}`));
+        return response.json();
+    }
 
-        // 模拟成功
-        return { success: true, reviewId: 'review-' + Date.now() };
+    async submitReview(data: ReviewSubmitData): Promise<ReviewSubmitResult> {
+        if (this.useMock) {
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    resolve({ success: true, reviewId: `rv${Date.now()}`, points: 50 });
+                }, 500);
+            });
+        }
+        const response = await fetch(buildUrl(API_CONFIG.ENDPOINTS.REVIEW_SUBMIT), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+        return response.json();
+    }
+
+    async saveDraft(data: Partial<ReviewSubmitData>): Promise<boolean> {
+        console.log('Saving draft:', data);
+        return true;
     }
 }
 
 export const reviewService = new ReviewService();
-
-export type {
-    ReviewAttitude,
-    DecisionPathType,
-    UseScenario,
-    IssueTag,
-    ReviewSubmitData,
-    SearchProductResult,
-};

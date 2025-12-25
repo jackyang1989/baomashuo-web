@@ -1,355 +1,327 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, HelpCircle, Filter, Heart, CheckCircle, Users, TrendingUp, Star, Sparkles } from 'lucide-react';
+import { Card, Toast, Tag } from 'antd-mobile';
+import { ArrowLeft, Star, Users, TrendingUp, Sparkles, CheckCircle, Heart, ChevronRight } from 'lucide-react';
 import { MobileContainer } from '@/components/layout/MobileContainer';
-import { useSelect } from '@/hooks/useSelect';
+import { selectService } from '@/services/selectService';
+import type { SelectFeatureConfig, ProblemOption, RecommendedProduct } from '@/types/select';
 
 export default function SelectPage() {
     const router = useRouter();
-    const {
-        step,
-        setStep,
-        categories,
-        problems,
-        budgets,
-        selections,
-        handleSelect,
-        recommendations,
-        resultFilters,
-        totalCount,
-        loading,
-        loadingResults,
-    } = useSelect();
+    const [config, setConfig] = useState<SelectFeatureConfig | null>(null);
+    const [problems, setProblems] = useState<ProblemOption[]>([]);
+    const [selectedProblem, setSelectedProblem] = useState<string | null>(null);
+    const [recommendations, setRecommendations] = useState<RecommendedProduct[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [showResults, setShowResults] = useState(false);
+
+    useEffect(() => {
+        async function init() {
+            const [cfg, probs] = await Promise.all([
+                selectService.getConfig(),
+                selectService.getProblems(),
+            ]);
+            setConfig(cfg);
+            setProblems(probs);
+            setLoading(false);
+        }
+        init();
+    }, []);
+
+    const handleSelectProblem = async (problemId: string) => {
+        setSelectedProblem(problemId);
+        setShowResults(true);
+
+        const recs = await selectService.getRecommendations({ problem: problemId });
+        setRecommendations(recs);
+    };
 
     if (loading) {
         return (
             <MobileContainer>
-                <div className="flex items-center justify-center h-screen bg-gray-50">
-                    <div className="text-gray-400">加载中...</div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#F7F8FA' }}>
+                    <span style={{ color: '#9CA3AF' }}>加载中...</span>
                 </div>
             </MobileContainer>
         );
     }
 
-    // 第一步：选择产品类型
-    const renderStep1 = () => (
-        <div className="p-4">
-            <div className="mb-4">
-                <h2 className="text-xl font-bold text-gray-800 mb-2">选择产品类型</h2>
-                <p className="text-sm text-gray-500">从奶瓶开始，逐步拓展到其他品类</p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-                {categories.map((cat) => (
-                    <button
-                        key={cat.id}
-                        onClick={() => {
-                            handleSelect('category', cat.id);
-                            setStep(2);
-                        }}
-                        className={`relative bg-white rounded-xl p-4 border-2 transition-all ${selections.category === cat.id
-                                ? 'border-blue-500 bg-blue-50'
-                                : 'border-gray-200 hover:border-blue-300'
-                            }`}
-                    >
-                        {cat.hot && (
-                            <div className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
-                                热门
-                            </div>
-                        )}
-                        <div className="text-4xl mb-2">{cat.icon}</div>
-                        <div className="font-semibold text-gray-800">{cat.name}</div>
+    return (
+        <MobileContainer>
+            <div style={{ minHeight: '100vh', background: '#F7F8FA' }}>
+                {/* Header */}
+                <div style={{
+                    background: 'white',
+                    padding: '12px 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    borderBottom: '1px solid #F3F4F6',
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 50,
+                }}>
+                    <button onClick={() => router.back()} style={{ background: 'none', border: 'none', padding: 0 }}>
+                        <ArrowLeft size={20} color="#374151" />
                     </button>
-                ))}
-            </div>
-        </div>
-    );
+                    <span style={{ fontSize: '17px', fontWeight: 'bold', color: '#1F2937' }}>怎么选</span>
+                </div>
 
-    // 第二步：选择问题
-    const renderStep2 = () => (
-        <div className="p-4">
-            <div className="mb-4">
-                <h2 className="text-xl font-bold text-gray-800 mb-2">你遇到什么问题？</h2>
-                <p className="text-sm text-gray-500">选择最困扰你的问题，我们推荐解决方案</p>
-            </div>
-
-            <div className="space-y-3">
-                {problems.map((problem) => (
-                    <button
-                        key={problem.id}
-                        onClick={() => {
-                            handleSelect('problem', problem.id);
-                            setStep(3);
-                        }}
-                        className={`w-full bg-white rounded-xl p-4 border-2 transition-all text-left ${selections.problem === problem.id
-                                ? 'border-blue-500 bg-blue-50'
-                                : 'border-gray-200 hover:border-blue-300'
-                            }`}
-                    >
-                        <div className="flex items-start gap-3">
-                            <div className="text-3xl">{problem.icon}</div>
-                            <div className="flex-1">
-                                <div className="flex items-center justify-between mb-1">
-                                    <span className="font-semibold text-gray-800">{problem.title}</span>
-                                    <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
-                                        {problem.effectiveness}
-                                    </span>
-                                </div>
-                                <p className="text-sm text-gray-600">{problem.desc}</p>
-                            </div>
+                {/* Content */}
+                {!showResults ? (
+                    // Step: Problem Selection (Simplified, direct)
+                    <div style={{ padding: '16px' }}>
+                        <div style={{ marginBottom: '20px' }}>
+                            <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1F2937', marginBottom: '8px' }}>
+                                你遇到什么问题？
+                            </h2>
+                            <p style={{ fontSize: '14px', color: '#6B7280' }}>
+                                选择最困扰你的问题，我们推荐解决方案
+                            </p>
                         </div>
-                    </button>
-                ))}
-            </div>
 
-            <button
-                onClick={() => setStep(3)}
-                className="w-full mt-4 text-gray-600 text-sm py-2"
-            >
-                跳过，直接看推荐 →
-            </button>
-        </div>
-    );
-
-    // 第三步：选择预算
-    const renderStep3 = () => (
-        <div className="p-4">
-            <div className="mb-4">
-                <h2 className="text-xl font-bold text-gray-800 mb-2">预算范围</h2>
-                <p className="text-sm text-gray-500">不同价位都有好选择</p>
-            </div>
-
-            <div className="space-y-3">
-                {budgets.map((budget) => (
-                    <button
-                        key={budget.id}
-                        onClick={() => {
-                            handleSelect('budget', budget.id);
-                            setStep(4);
-                        }}
-                        className={`w-full bg-white rounded-xl p-4 border-2 transition-all flex items-center justify-between ${selections.budget === budget.id
-                                ? 'border-blue-500 bg-blue-50'
-                                : 'border-gray-200 hover:border-blue-300'
-                            }`}
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className="text-2xl">{budget.icon}</div>
-                            <span className="font-semibold text-gray-800">{budget.range}</span>
-                        </div>
-                        {budget.popular && (
-                            <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                                最多选择
-                            </span>
-                        )}
-                    </button>
-                ))}
-            </div>
-
-            <button
-                onClick={() => setStep(4)}
-                className="w-full mt-4 text-gray-600 text-sm py-2"
-            >
-                预算不限，看所有推荐 →
-            </button>
-        </div>
-    );
-
-    // 第四步：推荐结果
-    const renderResults = () => (
-        <div className="flex-1 overflow-y-auto">
-            {/* 筛选条件总结 */}
-            <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4">
-                <div className="flex items-center justify-between mb-3">
-                    <h2 className="text-lg font-bold text-gray-800">为你推荐</h2>
-                    <button className="text-sm text-blue-600 flex items-center gap-1">
-                        <Filter className="w-4 h-4" />
-                        筛选
-                    </button>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                    <span className="text-xs bg-white px-3 py-1 rounded-full text-gray-700">
-                        {resultFilters.babyAge}
-                    </span>
-                    <span className="text-xs bg-white px-3 py-1 rounded-full text-gray-700">
-                        {resultFilters.problem}
-                    </span>
-                    <span className="text-xs bg-white px-3 py-1 rounded-full text-gray-700">
-                        {resultFilters.budget}
-                    </span>
-                </div>
-                <div className="mt-2 text-sm text-gray-600">
-                    找到 <span className="text-blue-600 font-semibold">{totalCount}个</span> 符合条件的产品
-                </div>
-            </div>
-
-            {loadingResults ? (
-                <div className="flex items-center justify-center py-20">
-                    <div className="text-gray-400">正在匹配推荐产品...</div>
-                </div>
-            ) : (
-                <>
-                    {/* 推荐产品列表 */}
-                    <div className="p-4 space-y-4">
-                        {recommendations.map((product, index) => (
-                            <div key={product.id} className="bg-white rounded-2xl p-4 shadow-md border border-gray-200">
-                                {/* 匹配度标签 */}
-                                <div className="flex items-center justify-between mb-3">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-lg font-bold text-blue-600">#{index + 1}</span>
-                                        <div className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 ${product.matchScore >= 90
-                                                ? 'bg-green-100 text-green-700'
-                                                : product.matchScore >= 80
-                                                    ? 'bg-blue-100 text-blue-700'
-                                                    : 'bg-gray-100 text-gray-700'
-                                            }`}>
-                                            <Sparkles className="w-3 h-3" />
-                                            匹配度 {product.matchScore}%
-                                        </div>
-                                    </div>
-                                    <button className="text-gray-400">
-                                        <Heart className="w-5 h-5" />
-                                    </button>
-                                </div>
-
-                                {/* 产品信息卡片 */}
-                                <div className="flex gap-3 mb-3">
-                                    <div className="w-24 h-24 bg-gray-100 rounded-xl flex items-center justify-center text-5xl flex-shrink-0 border border-gray-200">
-                                        {product.image}
-                                    </div>
-                                    <div className="flex-1">
-                                        <div className="text-xs text-gray-500 mb-1">{product.brand}</div>
-                                        <div className="font-semibold text-gray-800 mb-2 line-clamp-2">
-                                            {product.name}
-                                        </div>
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <span className="text-red-500 font-bold text-lg">¥{product.price}</span>
-                                            <span className="text-xs text-gray-400 line-through">¥{product.originalPrice}</span>
-                                            <span className="text-xs text-red-500 bg-red-50 px-2 py-0.5 rounded">
-                                                省{product.originalPrice - product.price}元
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center gap-1 text-xs text-gray-500">
-                                            <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                                            <span className="font-semibold">{product.rating}</span>
-                                            <span>•</span>
-                                            <span>{product.reviewCount}条评价</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* 推荐理由 */}
-                                <div className="bg-blue-50 rounded-xl p-3 mb-3">
-                                    <div className="text-xs text-blue-800 font-semibold mb-2">💡 为什么推荐</div>
-                                    <div className="space-y-1">
-                                        {product.reasons.map((reason, idx) => (
-                                            <div key={idx} className="flex items-start gap-2 text-xs text-gray-700">
-                                                <CheckCircle className="w-3 h-3 text-green-600 flex-shrink-0 mt-0.5" />
-                                                <span>{reason}</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            {problems.map((problem) => (
+                                <button
+                                    key={problem.id}
+                                    onClick={() => handleSelectProblem(problem.id)}
+                                    style={{
+                                        background: 'white',
+                                        border: selectedProblem === problem.id ? '2px solid #3B82F6' : '1px solid #E5E7EB',
+                                        borderRadius: '16px',
+                                        padding: '16px',
+                                        textAlign: 'left',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s',
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                                        <div style={{ fontSize: '32px' }}>{problem.icon}</div>
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                                <span style={{ fontSize: '16px', fontWeight: '600', color: '#1F2937' }}>{problem.title}</span>
+                                                <span style={{ fontSize: '11px', color: '#059669', background: '#ECFDF5', padding: '4px 8px', borderRadius: '8px' }}>
+                                                    {problem.effectiveness}
+                                                </span>
                                             </div>
-                                        ))}
+                                            <p style={{ fontSize: '13px', color: '#6B7280', margin: 0 }}>{problem.description}</p>
+                                        </div>
                                     </div>
-                                </div>
+                                </button>
+                            ))}
+                        </div>
 
-                                {/* 同月龄数据 */}
-                                <div className="flex items-center gap-4 mb-3 text-xs">
-                                    <div className="flex items-center gap-1 text-gray-600">
-                                        <Users className="w-4 h-4" />
-                                        <span>{product.userCount}位宝妈使用</span>
-                                    </div>
-                                    <div className="flex items-center gap-1 text-green-600">
-                                        <TrendingUp className="w-4 h-4" />
-                                        <span>同月龄推荐率{product.sameAgeRate}%</span>
-                                    </div>
-                                </div>
-
-                                {/* 标签 */}
-                                <div className="flex flex-wrap gap-2 mb-3">
-                                    {product.tags.map((tag, idx) => (
-                                        <span key={idx} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
-                                            {tag}
-                                        </span>
-                                    ))}
-                                </div>
-
-                                {/* 操作按钮 */}
-                                <div className="flex gap-2">
-                                    <button
-                                        className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3 rounded-xl font-semibold text-sm"
-                                        onClick={() => router.push(`/product/${product.id}`)}
-                                    >
-                                        查看详情
-                                    </button>
-                                    <button className="px-4 bg-gray-100 text-gray-700 py-3 rounded-xl font-semibold text-sm">
-                                        对比
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* 查看更多 */}
-                    <div className="p-4 text-center">
-                        <button className="text-sm text-gray-600">
-                            查看更多产品 →
+                        <button
+                            onClick={() => { setShowResults(true); selectService.getRecommendations({}).then(setRecommendations); }}
+                            style={{
+                                width: '100%',
+                                marginTop: '16px',
+                                padding: '12px',
+                                background: 'none',
+                                border: 'none',
+                                color: '#6B7280',
+                                fontSize: '14px',
+                                cursor: 'pointer',
+                            }}
+                        >
+                            跳过，直接看推荐 →
                         </button>
                     </div>
-                </>
-            )}
-        </div>
-    );
+                ) : (
+                    // Results Page
+                    <div>
+                        {/* Filter Summary */}
+                        <div style={{ background: 'linear-gradient(to right, #EFF6FF, #F5F3FF)', padding: '16px', borderBottom: '1px solid #E5E7EB' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                                <h2 style={{ fontSize: '17px', fontWeight: 'bold', color: '#1F2937', margin: 0 }}>为你推荐</h2>
+                                <button
+                                    onClick={() => setShowResults(false)}
+                                    style={{ fontSize: '13px', color: '#3B82F6', background: 'none', border: 'none', cursor: 'pointer' }}
+                                >
+                                    修改条件
+                                </button>
+                            </div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                <span style={{ fontSize: '12px', background: 'white', padding: '4px 12px', borderRadius: '16px', color: '#374151' }}>
+                                    3-6个月宝宝
+                                </span>
+                                {selectedProblem && (
+                                    <span style={{ fontSize: '12px', background: 'white', padding: '4px 12px', borderRadius: '16px', color: '#374151' }}>
+                                        {problems.find(p => p.id === selectedProblem)?.title}
+                                    </span>
+                                )}
+                            </div>
+                            <div style={{ marginTop: '8px', fontSize: '13px', color: '#6B7280' }}>
+                                找到 <span style={{ color: '#3B82F6', fontWeight: '600' }}>{recommendations.length}个</span> 符合条件的产品
+                            </div>
+                        </div>
 
-    return (
-        <div className="max-w-[515px] mx-auto bg-gray-50 min-h-screen flex flex-col lg:shadow-xl">
-            {/* 顶部导航 - 无阴影 */}
-            <div className="bg-white px-4 py-3 flex items-center justify-between">
-                <button
-                    className="flex items-center gap-2 text-gray-800"
-                    onClick={() => step > 1 ? setStep(step - 1) : router.back()}
-                >
-                    <ArrowLeft className="w-5 h-5" />
-                    <span className="font-semibold">怎么选</span>
-                </button>
-                <div className="flex items-center gap-2">
-                    <HelpCircle className="w-5 h-5 text-gray-400" />
-                </div>
-            </div>
+                        {/* Product List */}
+                        <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            {recommendations.map((product, index) => (
+                                <Card key={product.id} style={{ borderRadius: '16px', padding: '16px' }}>
+                                    {/* Match Score Badge */}
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#3B82F6' }}>#{index + 1}</span>
+                                            <div style={{
+                                                padding: '4px 10px',
+                                                borderRadius: '16px',
+                                                fontSize: '11px',
+                                                fontWeight: '600',
+                                                background: product.matchScore >= 90 ? '#DCFCE7' : '#DBEAFE',
+                                                color: product.matchScore >= 90 ? '#166534' : '#1E40AF',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '4px',
+                                            }}>
+                                                <Sparkles size={10} />
+                                                匹配度 {product.matchScore}%
+                                            </div>
+                                        </div>
+                                        <Heart size={20} color="#D1D5DB" />
+                                    </div>
 
-            {/* 进度条 - 无 border-b */}
-            {step < 4 && (
-                <div className="bg-white px-4 py-3">
-                    <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-gray-600">第 {step} 步，共 3 步</span>
-                        <span className="text-xs text-gray-500">可随时跳过</span>
+                                    {/* Product Info */}
+                                    <div style={{ display: 'flex', gap: '12px', marginBottom: '12px' }}>
+                                        <div style={{
+                                            width: '80px',
+                                            height: '80px',
+                                            background: '#F9FAFB',
+                                            borderRadius: '12px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            fontSize: '40px',
+                                            border: '1px solid #E5E7EB',
+                                            flexShrink: 0,
+                                        }}>
+                                            {product.image}
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ fontSize: '11px', color: '#9CA3AF', marginBottom: '2px' }}>{product.brand}</div>
+                                            <div style={{ fontSize: '14px', fontWeight: '600', color: '#1F2937', marginBottom: '8px', lineHeight: '1.4' }}>
+                                                {product.name}
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '4px' }}>
+                                                <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#EF4444' }}>¥{product.price}</span>
+                                                {product.originalPrice && (
+                                                    <>
+                                                        <span style={{ fontSize: '12px', color: '#9CA3AF', textDecoration: 'line-through' }}>¥{product.originalPrice}</span>
+                                                        <span style={{ fontSize: '11px', color: '#EF4444', background: '#FEF2F2', padding: '2px 6px', borderRadius: '4px' }}>
+                                                            省{product.originalPrice - product.price}元
+                                                        </span>
+                                                    </>
+                                                )}
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#6B7280' }}>
+                                                <Star size={12} color="#FBBF24" fill="#FBBF24" />
+                                                <span style={{ fontWeight: '600' }}>{product.rating}</span>
+                                                <span>•</span>
+                                                <span>{product.reviewCount}条评价</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Reasons */}
+                                    <div style={{ background: '#EFF6FF', borderRadius: '12px', padding: '12px', marginBottom: '12px' }}>
+                                        <div style={{ fontSize: '12px', fontWeight: '600', color: '#1E40AF', marginBottom: '8px' }}>💡 为什么推荐</div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                            {product.reasons.map((reason, idx) => (
+                                                <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', fontSize: '12px', color: '#374151' }}>
+                                                    <CheckCircle size={12} color="#10B981" style={{ marginTop: '2px', flexShrink: 0 }} />
+                                                    <span>{reason}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Same Age Data */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '12px', fontSize: '12px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#6B7280' }}>
+                                            <Users size={14} />
+                                            <span>{product.sameAgeUserCount}位宝妈使用</span>
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#059669' }}>
+                                            <TrendingUp size={14} />
+                                            <span>同月龄推荐率{product.sameAgeRecommendRate}%</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Tags */}
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '12px' }}>
+                                        {product.tags.map((tag, idx) => (
+                                            <span key={idx} style={{ fontSize: '11px', background: '#F3F4F6', color: '#4B5563', padding: '4px 8px', borderRadius: '6px' }}>
+                                                {tag}
+                                            </span>
+                                        ))}
+                                    </div>
+
+                                    {/* Actions */}
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                        <button
+                                            onClick={() => router.push(`/product/${product.id}`)}
+                                            style={{
+                                                flex: 1,
+                                                padding: '12px',
+                                                background: 'linear-gradient(to right, #3B82F6, #2563EB)',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: '12px',
+                                                fontSize: '14px',
+                                                fontWeight: '600',
+                                                cursor: 'pointer',
+                                            }}
+                                        >
+                                            查看详情
+                                        </button>
+                                        <button
+                                            onClick={() => router.push(`/select/compare?ids=${product.id}`)}
+                                            style={{
+                                                padding: '12px 16px',
+                                                background: '#F3F4F6',
+                                                color: '#374151',
+                                                border: 'none',
+                                                borderRadius: '12px',
+                                                fontSize: '14px',
+                                                fontWeight: '600',
+                                                cursor: 'pointer',
+                                            }}
+                                        >
+                                            对比
+                                        </button>
+                                    </div>
+                                </Card>
+                            ))}
+                        </div>
+
+                        {/* Contribution CTA */}
+                        <div style={{ padding: '0 16px 24px' }}>
+                            <div style={{
+                                background: 'linear-gradient(to right, #FFF7ED, #FEF3C7)',
+                                borderRadius: '16px',
+                                padding: '16px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '12px',
+                            }}>
+                                <div style={{ fontSize: '28px' }}>✍️</div>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontSize: '14px', fontWeight: '600', color: '#92400E', marginBottom: '4px' }}>
+                                        你的反馈帮助其他宝妈
+                                    </div>
+                                    <div style={{ fontSize: '12px', color: '#B45309' }}>
+                                        分享你的真实使用体验，让决策更简单
+                                    </div>
+                                </div>
+                                <ChevronRight size={20} color="#D97706" />
+                            </div>
+                        </div>
                     </div>
-                    <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div
-                            className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-300"
-                            style={{ width: `${(step / 3) * 100}%` }}
-                        />
-                    </div>
-                </div>
-            )}
-
-            {/* 内容区域 */}
-            <div className="flex-1 overflow-y-auto">
-                {step === 1 && renderStep1()}
-                {step === 2 && renderStep2()}
-                {step === 3 && renderStep3()}
-                {step === 4 && renderResults()}
+                )}
             </div>
-
-            {/* 底部操作栏 - 固定在底部 */}
-            {step > 1 && step < 4 && (
-                <div className="bg-white border-t border-gray-200 px-4 py-3">
-                    <button
-                        onClick={() => setStep(step - 1)}
-                        className="w-full py-3 text-gray-600 border border-gray-300 rounded-xl font-semibold"
-                    >
-                        上一步
-                    </button>
-                </div>
-            )}
-        </div>
+        </MobileContainer>
     );
 }
