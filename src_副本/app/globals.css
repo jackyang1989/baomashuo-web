@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+:root {
+  --adm-color-primary: #FF8FA3;
+  /* AntD Mobile 主色调覆盖 */
+}
+
+body {
+  background-color: #F7F8FA;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}

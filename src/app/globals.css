@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+/* 自定义覆盖 */
+.top-12 {
+    top: calc(var(--spacing) * 10);
+}
+
+/* 基础样式变量 */
+:root {
+    --color-primary: #3b82f6;
+    --color-danger: #ef4444;
+    --color-success: #22c55e;
+    --color-warning: #f59e0b;
+    --color-bg-primary: #ffffff;
+    --color-bg-secondary: #f9fafb;
+    --color-text-primary: #1f2937;
+    --color-text-secondary: #6b7280;
+    --color-text-muted: #9ca3af;
+    --color-border: #e5e7eb;
+}
+
+/* 隐藏滚动条 */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* 基础卡片样式 */
+.card {
+    background: var(--color-bg-primary);
+    border-radius: 12px;
+    border: 1px solid var(--color-border);
+}
+
+/* 按钮样式 */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-weight: 500;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.btn-primary {
+    background: var(--color-primary);
+    color: white;
+}
+
+.btn-outline {
+    border: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
+    background: transparent;
+}
+
+/* 安全区域适配 */
+body {
+    padding-bottom: env(safe-area-inset-bottom);
+}
