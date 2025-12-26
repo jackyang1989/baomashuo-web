@@ -81,10 +81,12 @@ const TOOLS = [
 
 export default function HomePage() {
     const router = useRouter();
-    const [selectedAge, setSelectedAge] = useState('3-6个月');
+    const [selectedAge, setSelectedAge] = useState('');
     const [selectedFeeding, setSelectedFeeding] = useState('');
     const [selectedProblem, setSelectedProblem] = useState('');
     const [showAgeDropdown, setShowAgeDropdown] = useState(false);
+    const [showFeedingDropdown, setShowFeedingDropdown] = useState(false);
+    const [showProblemDropdown, setShowProblemDropdown] = useState(false);
 
     const handleQuickFilter = () => {
         const params = new URLSearchParams();
@@ -117,26 +119,26 @@ export default function HomePage() {
 
                 {/* 快速筛选入口 */}
                 <div style={{ background: 'white', margin: '12px 16px', borderRadius: '16px', padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-                    <div style={{ fontSize: '15px', fontWeight: '600', color: '#1F2937', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Sparkles size={16} color="#F59E0B" />
-                        告诉我宝宝情况，3秒精选推荐
+                    <div style={{ fontSize: '16px', fontWeight: '600', color: '#1F2937', marginBottom: '16px', textAlign: 'center' }}>
+                        每一次母婴选品，都有人试过
                     </div>
-                    
-                    <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+
+                    {/* 三个下拉选框 */}
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
                         {/* 月龄选择 */}
-                        <div style={{ position: 'relative' }}>
+                        <div style={{ flex: 1, position: 'relative' }}>
                             <button
-                                onClick={() => setShowAgeDropdown(!showAgeDropdown)}
-                                style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 14px', background: selectedAge ? '#EFF6FF' : '#F3F4F6', border: selectedAge ? '1px solid #3B82F6' : '1px solid #E5E7EB', borderRadius: '20px', fontSize: '13px', color: selectedAge ? '#3B82F6' : '#6B7280' }}
+                                onClick={() => { setShowAgeDropdown(!showAgeDropdown); setShowFeedingDropdown(false); setShowProblemDropdown(false); }}
+                                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', padding: '12px 8px', background: 'white', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', color: '#374151' }}
                             >
-                                <Baby size={14} />
+                                <span style={{ color: '#3B82F6' }}>💧</span>
                                 {selectedAge || '宝宝月龄'}
-                                <ChevronDown size={14} />
+                                <ChevronDown size={14} color="#9CA3AF" />
                             </button>
                             {showAgeDropdown && (
-                                <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: '4px', background: 'white', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 100, overflow: 'hidden' }}>
+                                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px', background: 'white', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 100, overflow: 'hidden' }}>
                                     {AGE_OPTIONS.map((age) => (
-                                        <button key={age} onClick={() => { setSelectedAge(age); setShowAgeDropdown(false); }} style={{ display: 'block', width: '100%', padding: '10px 20px', border: 'none', background: selectedAge === age ? '#EFF6FF' : 'white', color: selectedAge === age ? '#3B82F6' : '#374151', fontSize: '13px', textAlign: 'left' }}>
+                                        <button key={age} onClick={() => { setSelectedAge(age); setShowAgeDropdown(false); }} style={{ display: 'block', width: '100%', padding: '10px 12px', border: 'none', background: selectedAge === age ? '#EFF6FF' : 'white', color: selectedAge === age ? '#3B82F6' : '#374151', fontSize: '13px', textAlign: 'left' }}>
                                             {age}
                                         </button>
                                     ))}
@@ -144,24 +146,55 @@ export default function HomePage() {
                             )}
                         </div>
 
-                        {/* 常见问题 */}
-                        {PROBLEM_OPTIONS.slice(0, 3).map((problem) => (
+                        {/* 喂养方式选择 */}
+                        <div style={{ flex: 1, position: 'relative' }}>
                             <button
-                                key={problem}
-                                onClick={() => setSelectedProblem(selectedProblem === problem ? '' : problem)}
-                                style={{ padding: '10px 14px', background: selectedProblem === problem ? '#FEF3C7' : '#F3F4F6', border: selectedProblem === problem ? '1px solid #F59E0B' : '1px solid #E5E7EB', borderRadius: '20px', fontSize: '13px', color: selectedProblem === problem ? '#D97706' : '#6B7280' }}
+                                onClick={() => { setShowFeedingDropdown(!showFeedingDropdown); setShowAgeDropdown(false); setShowProblemDropdown(false); }}
+                                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', padding: '12px 8px', background: 'white', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', color: '#374151' }}
                             >
-                                {problem}
+                                <span style={{ color: '#3B82F6' }}>💧</span>
+                                {selectedFeeding || '喂养方式'}
+                                <ChevronDown size={14} color="#9CA3AF" />
                             </button>
-                        ))}
+                            {showFeedingDropdown && (
+                                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px', background: 'white', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 100, overflow: 'hidden' }}>
+                                    {FEEDING_OPTIONS.map((feeding) => (
+                                        <button key={feeding} onClick={() => { setSelectedFeeding(feeding); setShowFeedingDropdown(false); }} style={{ display: 'block', width: '100%', padding: '10px 12px', border: 'none', background: selectedFeeding === feeding ? '#EFF6FF' : 'white', color: selectedFeeding === feeding ? '#3B82F6' : '#374151', fontSize: '13px', textAlign: 'left' }}>
+                                            {feeding}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* 常见问题选择 */}
+                        <div style={{ flex: 1, position: 'relative' }}>
+                            <button
+                                onClick={() => { setShowProblemDropdown(!showProblemDropdown); setShowAgeDropdown(false); setShowFeedingDropdown(false); }}
+                                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', padding: '12px 8px', background: 'white', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', color: '#374151' }}
+                            >
+                                <span style={{ color: '#3B82F6' }}>💧</span>
+                                {selectedProblem || '常见问题'}
+                                <ChevronDown size={14} color="#9CA3AF" />
+                            </button>
+                            {showProblemDropdown && (
+                                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px', background: 'white', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 100, overflow: 'hidden' }}>
+                                    {PROBLEM_OPTIONS.map((problem) => (
+                                        <button key={problem} onClick={() => { setSelectedProblem(problem); setShowProblemDropdown(false); }} style={{ display: 'block', width: '100%', padding: '10px 12px', border: 'none', background: selectedProblem === problem ? '#EFF6FF' : 'white', color: selectedProblem === problem ? '#3B82F6' : '#374151', fontSize: '13px', textAlign: 'left' }}>
+                                            {problem}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     <button
                         onClick={handleQuickFilter}
-                        style={{ width: '100%', padding: '14px', background: '#3B82F6', color: 'white', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: '600', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                        style={{ width: '100%', padding: '14px', background: '#EFF6FF', color: '#374151', border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: '500', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                     >
-                        一键进入精选口碑产品
-                        <ChevronRight size={18} />
+                        告诉我宝宝情况，3秒精选推荐
+                        <span style={{ color: '#F59E0B', fontSize: '18px' }}>→</span>
                     </button>
                 </div>
 
@@ -183,7 +216,7 @@ export default function HomePage() {
                                         {product.image}
                                     </div>
                                     <div style={{ fontSize: '13px', fontWeight: '600', color: '#1F2937', marginBottom: '6px', lineHeight: 1.3 }}>{product.name}</div>
-                                    
+
                                     {/* 点赞数 */}
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '8px' }}>
                                         <ThumbsUp size={12} color="#10B981" />
@@ -223,9 +256,9 @@ export default function HomePage() {
                                     </div>
                                     <span style={{ fontSize: '11px', background: '#EFF6FF', color: '#3B82F6', padding: '4px 8px', borderRadius: '6px' }}>#{exp.product}</span>
                                 </div>
-                                
+
                                 <div style={{ fontSize: '14px', color: '#374151', lineHeight: 1.5, marginBottom: '12px' }}>{exp.content}</div>
-                                
+
                                 <div style={{ display: 'flex', gap: '12px' }}>
                                     <button style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '8px 14px', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '20px', fontSize: '12px', color: '#059669', fontWeight: '500' }}>
                                         <ThumbsUp size={14} />
