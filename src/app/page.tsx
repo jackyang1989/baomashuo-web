@@ -122,21 +122,33 @@ export default function HomePage() {
             <div style={{ minHeight: '100vh', background: '#F7F8FA', paddingBottom: '80px' }}>
                 {/* 顶部区域 */}
                 <div style={{ background: currentCategoryInfo.color, padding: '16px', color: 'white' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                        <div>
-                            <div style={{ fontSize: '22px', fontWeight: 'bold' }}>宝妈说</div>
-                        </div>
-                        <div style={{ display: 'flex', gap: '16px' }}>
-                            <button onClick={() => router.push('/search')} style={{ background: 'none', border: 'none', color: 'white' }}>
-                                <Search size={22} />
-                            </button>
-                            <div style={{ position: 'relative' }}>
-                                <Bell size={22} />
-                                <span style={{ position: 'absolute', top: '-4px', right: '-4px', width: '16px', height: '16px', background: '#EF4444', borderRadius: '50%', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>3</span>
-                            </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                        <div style={{ fontSize: '22px', fontWeight: 'bold' }}>宝妈说</div>
+                        <div style={{ position: 'relative' }}>
+                            <Bell size={22} />
+                            <span style={{ position: 'absolute', top: '-4px', right: '-4px', width: '16px', height: '16px', background: '#EF4444', borderRadius: '50%', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>3</span>
                         </div>
                     </div>
-                    <div style={{ fontSize: '14px', opacity: 0.9 }}>每一次母婴选品，都有人试过</div>
+
+                    {/* 搜索框 */}
+                    <div
+                        onClick={() => router.push('/search')}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            background: 'rgba(255,255,255,0.2)',
+                            borderRadius: '10px',
+                            padding: '10px 14px',
+                            marginBottom: '10px',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        <Search size={18} color="rgba(255,255,255,0.8)" />
+                        <span style={{ fontSize: '14px', color: 'rgba(255,255,255,0.7)' }}>搜索产品、品牌、问题...</span>
+                    </div>
+
+                    <div style={{ fontSize: '13px', opacity: 0.9 }}>每一次母婴选品，都有人试过</div>
                 </div>
 
                 {/* 品类切换Tab */}
