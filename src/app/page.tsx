@@ -3,316 +3,276 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import {
-    Search, Bell, HelpCircle, ClipboardList, BookOpen,
-    AlertTriangle, CheckCircle, TrendingDown, ChevronRight,
-    Users, MessageCircle, Link as LinkIcon
-} from 'lucide-react';
-import { Skeleton, Toast } from 'antd-mobile';
+import { Search, Bell, ChevronDown, ThumbsUp, MessageCircle, ChevronRight, Sparkles, AlertTriangle, Baby, Droplets, HelpCircle } from 'lucide-react';
 import { MobileContainer } from '@/components/layout/MobileContainer';
-import { FeedbackCard } from '@/components/feedback/FeedbackCard';
-import { useFeedbacks } from '@/hooks/useFeedbacks';
-import { productService } from '@/services/productService';
-import {
-    MAIN_ENTRIES, HOT_QUESTIONS, PITFALL_ALERTS,
-    QUICK_TOOLS, TAB_BAR_ITEMS
-} from '@/mocks/homepage';
 
-const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
-    HelpCircle, ClipboardList, BookOpen, AlertTriangle, CheckCircle, Users,
-};
+// 月龄选项
+const AGE_OPTIONS = ['0-3个月', '3-6个月', '6-12个月', '1-2岁', '2岁以上'];
+// 喂养方式
+const FEEDING_OPTIONS = ['母乳喂养', '混合喂养', '配方奶喂养'];
+// 常见问题
+const PROBLEM_OPTIONS = ['胀气/肠绞痛', '拒绝奶瓶', '呛奶', '吐奶', '奶量不足'];
+
+// 精选口碑产品
+const CURATED_PRODUCTS = [
+    {
+        id: 'p1',
+        name: 'Comotomo可么多么奶瓶',
+        image: '🍼',
+        likes: 320,
+        pros: ['防胀气效果显著', '宝宝接受度高'],
+        cons: ['价格偏贵'],
+        aiSummary: '92%宝妈推荐，适合胀气宝宝',
+    },
+    {
+        id: 'p2',
+        name: 'Pigeon贝亲玻璃奶瓶',
+        image: '🍼',
+        likes: 280,
+        pros: ['性价比高', '经典品牌'],
+        cons: ['玻璃材质较重'],
+        aiSummary: '85%宝妈推荐，高性价比首选',
+    },
+    {
+        id: 'p3',
+        name: "Dr.Brown's布朗博士",
+        image: '🍼',
+        likes: 256,
+        pros: ['导气管防呛奶', '科学设计'],
+        cons: ['清洗配件多'],
+        aiSummary: '88%宝妈推荐，防呛奶专家',
+    },
+];
+
+// 真实宝妈经验
+const REAL_EXPERIENCES = [
+    {
+        id: 1,
+        user: { name: '小雨妈妈', avatar: '👩', babyAge: '3个月' },
+        content: '用了30天，宝宝胀气明显好转，晚上终于能睡整觉了！',
+        product: 'Comotomo奶瓶',
+        agrees: 234,
+        time: '2小时前',
+    },
+    {
+        id: 2,
+        user: { name: '晴天妈妈', avatar: '👱‍♀️', babyAge: '5个月' },
+        content: '从母乳转奶瓶，试了3款才成功，分享避坑经验～',
+        product: '奶瓶转换',
+        agrees: 189,
+        time: '5小时前',
+    },
+    {
+        id: 3,
+        user: { name: '豆豆妈', avatar: '👩‍🦰', babyAge: '4个月' },
+        content: '导气管设计确实防呛奶，就是零件多清洗麻烦一点',
+        product: '布朗博士',
+        agrees: 156,
+        time: '昨天',
+    },
+];
+
+// 工具导航
+const TOOLS = [
+    { id: 'match', icon: <Baby size={20} />, title: '宝宝匹配', desc: '定制推荐', href: '/select' },
+    { id: 'pitfall', icon: <AlertTriangle size={20} />, title: '避坑提醒', desc: '集中查看', href: '/pitfalls' },
+    { id: 'ai', icon: <Sparkles size={20} />, title: '新品推荐', desc: 'AI精选', href: '/products' },
+];
 
 export default function HomePage() {
     const router = useRouter();
-    const [activeTab, setActiveTab] = useState('decision');
-    const [babyAge] = useState('3-6个月');
-    const [searchInput, setSearchInput] = useState('');
-    const [isSearching, setIsSearching] = useState(false);
+    const [selectedAge, setSelectedAge] = useState('3-6个月');
+    const [selectedFeeding, setSelectedFeeding] = useState('');
+    const [selectedProblem, setSelectedProblem] = useState('');
+    const [showAgeDropdown, setShowAgeDropdown] = useState(false);
 
-    // 使用 Service 层获取反馈数据
-    const { feedbacks, loading, markHelpful } = useFeedbacks();
-
-    // 搜索处理 - 支持链接识别
-    const handleSearch = async () => {
-        if (!searchInput.trim()) {
-            Toast.show('请输入产品名称或商品链接');
-            return;
-        }
-
-        setIsSearching(true);
-        const result = await productService.parseProductFromInput(searchInput);
-        setIsSearching(false);
-
-        if (result.matched && result.productId) {
-            router.push(`/product/${result.productId}`);
-        } else {
-            Toast.show('暂未收录该产品，试试搜索"可么多么"');
-        }
+    const handleQuickFilter = () => {
+        const params = new URLSearchParams();
+        if (selectedAge) params.set('age', selectedAge);
+        if (selectedProblem) params.set('problem', selectedProblem);
+        router.push(`/select/results?${params.toString()}`);
     };
 
     return (
         <MobileContainer>
-            {/* 顶部 - 强化搜索入口 */}
-            <div className="bg-gradient-to-r from-blue-500 to-purple-500 px-4 py-4 text-white">
-                <div className="flex items-center justify-between mb-3">
-                    <div>
-                        <div className="text-2xl font-bold mb-1">宝妈说</div>
-                        <div className="text-sm opacity-90">真实决策，不踩坑</div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <div className="relative">
-                            <Bell className="w-5 h-5" />
-                            <div className="absolute -top-1 -right-1 bg-red-500 rounded-full w-4 h-4 text-xs flex items-center justify-center">3</div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* 搜索栏 - 支持链接识别 */}
-                <div className="bg-white rounded-xl p-1 flex items-center gap-2">
-                    <div className="flex-1 flex items-center gap-2 px-3">
-                        <LinkIcon className="w-4 h-4 text-gray-400" />
-                        <input
-                            type="text"
-                            value={searchInput}
-                            onChange={(e) => setSearchInput(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                            placeholder="输入淘宝/京东链接或产品名查评价"
-                            className="flex-1 py-2 text-sm text-gray-800 placeholder:text-gray-400 outline-none"
-                        />
-                    </div>
-                    <button
-                        onClick={handleSearch}
-                        disabled={isSearching}
-                        className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium"
-                    >
-                        {isSearching ? '搜索中...' : '查评价'}
-                    </button>
-                </div>
-
-                {/* 宝宝月龄选择器 */}
-                <div className="mt-3 bg-white/20 backdrop-blur-sm rounded-xl p-3 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <div className="text-2xl">👶</div>
+            <div style={{ minHeight: '100vh', background: '#F7F8FA', paddingBottom: '80px' }}>
+                {/* 顶部区域 */}
+                <div style={{ background: '#3B82F6', padding: '16px', color: 'white' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                         <div>
-                            <div className="text-xs opacity-80">当前查看</div>
-                            <div className="font-semibold">{babyAge} 宝宝</div>
+                            <div style={{ fontSize: '22px', fontWeight: 'bold' }}>宝妈说</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '16px' }}>
+                            <button onClick={() => router.push('/search')} style={{ background: 'none', border: 'none', color: 'white' }}>
+                                <Search size={22} />
+                            </button>
+                            <div style={{ position: 'relative' }}>
+                                <Bell size={22} />
+                                <span style={{ position: 'absolute', top: '-4px', right: '-4px', width: '16px', height: '16px', background: '#EF4444', borderRadius: '50%', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>3</span>
+                            </div>
                         </div>
                     </div>
-                    <button className="bg-white/30 px-3 py-1 rounded-lg text-sm">
-                        切换月龄
+                    <div style={{ fontSize: '14px', opacity: 0.9 }}>每一次母婴选品，都有人试过</div>
+                </div>
+
+                {/* 快速筛选入口 */}
+                <div style={{ background: 'white', margin: '12px 16px', borderRadius: '16px', padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                    <div style={{ fontSize: '15px', fontWeight: '600', color: '#1F2937', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Sparkles size={16} color="#F59E0B" />
+                        告诉我宝宝情况，3秒精选推荐
+                    </div>
+                    
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+                        {/* 月龄选择 */}
+                        <div style={{ position: 'relative' }}>
+                            <button
+                                onClick={() => setShowAgeDropdown(!showAgeDropdown)}
+                                style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 14px', background: selectedAge ? '#EFF6FF' : '#F3F4F6', border: selectedAge ? '1px solid #3B82F6' : '1px solid #E5E7EB', borderRadius: '20px', fontSize: '13px', color: selectedAge ? '#3B82F6' : '#6B7280' }}
+                            >
+                                <Baby size={14} />
+                                {selectedAge || '宝宝月龄'}
+                                <ChevronDown size={14} />
+                            </button>
+                            {showAgeDropdown && (
+                                <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: '4px', background: 'white', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 100, overflow: 'hidden' }}>
+                                    {AGE_OPTIONS.map((age) => (
+                                        <button key={age} onClick={() => { setSelectedAge(age); setShowAgeDropdown(false); }} style={{ display: 'block', width: '100%', padding: '10px 20px', border: 'none', background: selectedAge === age ? '#EFF6FF' : 'white', color: selectedAge === age ? '#3B82F6' : '#374151', fontSize: '13px', textAlign: 'left' }}>
+                                            {age}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* 常见问题 */}
+                        {PROBLEM_OPTIONS.slice(0, 3).map((problem) => (
+                            <button
+                                key={problem}
+                                onClick={() => setSelectedProblem(selectedProblem === problem ? '' : problem)}
+                                style={{ padding: '10px 14px', background: selectedProblem === problem ? '#FEF3C7' : '#F3F4F6', border: selectedProblem === problem ? '1px solid #F59E0B' : '1px solid #E5E7EB', borderRadius: '20px', fontSize: '13px', color: selectedProblem === problem ? '#D97706' : '#6B7280' }}
+                            >
+                                {problem}
+                            </button>
+                        ))}
+                    </div>
+
+                    <button
+                        onClick={handleQuickFilter}
+                        style={{ width: '100%', padding: '14px', background: '#3B82F6', color: 'white', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: '600', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                    >
+                        一键进入精选口碑产品
+                        <ChevronRight size={18} />
                     </button>
                 </div>
-            </div>
 
-            {/* 主内容区 */}
-            <div className="flex-1 overflow-y-auto pb-20 bg-[#F7F8FA]">
-
-                {/* 五大决策入口 */}
-                <div className="p-4">
-                    <div className="mb-3 flex items-center justify-between">
-                        <h2 className="font-bold text-gray-800">我要做决策</h2>
-                        <span className="text-xs text-gray-500">选择你的阶段</span>
+                {/* 本周精选口碑产品 */}
+                <div style={{ padding: '0 16px', marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ fontSize: '18px' }}>🏆</span>
+                            <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#1F2937' }}>本周精选口碑产品</span>
+                        </div>
+                        <Link href="/products" style={{ fontSize: '13px', color: '#3B82F6', textDecoration: 'none' }}>查看更多</Link>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3 mb-3">
-                        {MAIN_ENTRIES.map((entry) => (
-                            <Link
-                                key={entry.id}
-                                href={entry.href}
-                                className="relative bg-white rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow text-left overflow-hidden"
-                            >
-                                <div className={`absolute top-0 right-0 w-20 h-20 bg-gradient-to-br ${entry.color} opacity-10 rounded-full -mr-8 -mt-8`} />
-
-                                {entry.badge && (
-                                    <div className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
-                                        {entry.badge}
+                    <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '8px' }}>
+                        {CURATED_PRODUCTS.map((product) => (
+                            <Link key={product.id} href={`/product/${product.id}`} style={{ textDecoration: 'none', flexShrink: 0, width: '160px' }}>
+                                <div style={{ background: 'white', borderRadius: '16px', padding: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                                    <div style={{ width: '100%', height: '80px', background: '#F9FAFB', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px', marginBottom: '12px' }}>
+                                        {product.image}
                                     </div>
-                                )}
-
-                                <div className={`w-9 h-9 mb-2 bg-gradient-to-br ${entry.color} text-white p-2 rounded-xl flex items-center justify-center text-lg`}>
-                                    {entry.id === 'select' && '❓'}
-                                    {entry.id === 'usage' && '📖'}
-                                    {entry.id === 'review' && '✓'}
-                                    {entry.id === 'pitfall' && '⚠'}
-                                </div>
-                                <div className="font-bold text-gray-800 mb-0.5">{entry.title}</div>
-                                <div className="text-[11px] text-gray-500 mb-1">{entry.subtitle}</div>
-                                <div className="text-[11px] text-gray-400">{entry.desc}</div>
-                            </Link>
-                        ))}
-                    </div>
-
-                    <Link
-                        href="/lists"
-                        className="w-full bg-gradient-to-r from-amber-500 to-yellow-500 rounded-2xl p-4 shadow-sm flex items-center justify-between"
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className="text-3xl">📋</div>
-                            <div className="text-left text-white">
-                                <div className="font-bold">清单与工具</div>
-                                <div className="text-sm opacity-90">直接告诉我买什么</div>
-                            </div>
-                        </div>
-                        <div className="text-xl text-white">→</div>
-                    </Link>
-                </div>
-
-                {/* 避坑警示区 */}
-                <div className="px-4 pb-4">
-                    <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-2xl p-4 border border-red-200">
-                        <div className="flex items-center gap-2 mb-3">
-                            <span className="text-xl">⚠️</span>
-                            <h3 className="font-bold text-gray-800 flex-1">避坑警示</h3>
-                            <span className="text-[10px] text-white bg-red-500 px-2 py-1 rounded-lg">
-                                实时更新
-                            </span>
-                        </div>
-
-                        {PITFALL_ALERTS.map((alert) => (
-                            <div key={alert.id} className="bg-white rounded-xl p-3 mb-2 last:mb-0">
-                                <div className="font-semibold text-sm text-gray-800 mb-2">
-                                    📉 {alert.product}
-                                </div>
-                                <div className="text-xs text-gray-600 mb-2">
-                                    {alert.issue}
-                                </div>
-                                <div className="text-[11px] text-gray-500">
-                                    👥 {alert.userCount}位宝妈反馈
-                                </div>
-                            </div>
-                        ))}
-
-                        <Link href="/pitfalls" className="block w-full mt-3 text-sm font-semibold py-2 text-center bg-transparent border-none" style={{ color: '#dc2626' }}>
-                            查看完整避坑榜 →
-                        </Link>
-                    </div>
-                </div>
-
-                {/* 热门决策问题 */}
-                <div className="px-4 pb-4">
-                    <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-lg font-bold text-gray-800">同月龄都在问</h3>
-                        <span className="text-xs text-gray-500">{babyAge}</span>
-                    </div>
-
-                    <div className="space-y-2">
-                        {HOT_QUESTIONS.slice(0, 1).map((q) => (
-                            <div key={q.id} className="bg-white rounded-xl p-3 shadow-sm flex gap-3">
-                                <div className="w-9 h-9 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0 text-lg">
-                                    ❓
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="text-[11px] text-blue-600 mb-1">{q.category}</div>
-                                    <div className="font-semibold text-sm text-gray-800 mb-2">{q.question}</div>
-                                    <div className="flex items-center gap-3 text-[11px] text-gray-500 flex-wrap">
-                                        <span>💬 {q.answers}个回答</span>
-                                        <span>👥 {q.realUsers}位真实用户</span>
-                                        <span className="bg-purple-100 text-purple-600 px-2 py-0.5 rounded text-[10px]">
-                                            {q.age}
-                                        </span>
+                                    <div style={{ fontSize: '13px', fontWeight: '600', color: '#1F2937', marginBottom: '6px', lineHeight: 1.3 }}>{product.name}</div>
+                                    
+                                    {/* 点赞数 */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '8px' }}>
+                                        <ThumbsUp size={12} color="#10B981" />
+                                        <span style={{ fontSize: '12px', color: '#10B981', fontWeight: '600' }}>{product.likes}宝妈推荐</span>
                                     </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
 
-                {/* 真实使用反馈流 - 使用 Service 层数据 */}
-                <div className="px-4 pb-4">
-                    <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-lg font-bold text-gray-800">真实使用反馈</h3>
-                        <button className="text-sm text-blue-600 font-semibold bg-blue-50 px-3 py-1 rounded-lg border-none">
-                            筛选
-                        </button>
-                    </div>
-
-                    {/* 加载状态 */}
-                    {loading ? (
-                        <div className="space-y-3">
-                            {[1, 2].map((i) => (
-                                <div key={i} className="bg-white rounded-2xl p-4">
-                                    <Skeleton animated className="h-12 mb-3" />
-                                    <Skeleton animated className="h-24 mb-3" />
-                                    <Skeleton animated className="h-8" />
+                                    {/* AI总结优缺点 */}
+                                    <div style={{ fontSize: '11px', color: '#059669', marginBottom: '4px' }}>✓ {product.pros[0]}</div>
+                                    <div style={{ fontSize: '11px', color: '#D97706' }}>⚠ {product.cons[0]}</div>
                                 </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="space-y-0">
-                            {feedbacks.map((feedback) => (
-                                <FeedbackCard
-                                    key={feedback.id}
-                                    feedback={feedback}
-                                    onHelpful={markHelpful}
-                                />
-                            ))}
-                        </div>
-                    )}
-                </div>
-
-                {/* 快速决策工具 */}
-                <div className="px-4 pb-6">
-                    <h3 className="text-lg font-bold text-gray-800 mb-3">快速决策工具</h3>
-                    <div className="space-y-2">
-                        {QUICK_TOOLS.map((tool) => (
-                            <Link
-                                key={tool.id}
-                                href={tool.href}
-                                className="bg-white rounded-xl p-4 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className="text-3xl">{tool.icon}</div>
-                                    <div className="text-left">
-                                        <div className="font-semibold text-sm text-gray-800">{tool.title}</div>
-                                        <div className="text-[11px] text-gray-500">{tool.users}</div>
-                                    </div>
-                                </div>
-                                <div className="text-xl text-gray-300">→</div>
                             </Link>
                         ))}
                     </div>
                 </div>
 
-                <div className="text-center py-6 text-gray-400 text-sm">
-                    下拉加载更多内容...
+                {/* 真实宝妈经验 */}
+                <div style={{ padding: '0 16px', marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ fontSize: '18px' }}>💬</span>
+                            <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#1F2937' }}>真实宝妈说</span>
+                        </div>
+                        <Link href="/community" style={{ fontSize: '13px', color: '#3B82F6', textDecoration: 'none' }}>更多</Link>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        {REAL_EXPERIENCES.map((exp) => (
+                            <div key={exp.id} style={{ background: 'white', borderRadius: '16px', padding: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                                    <span style={{ fontSize: '28px' }}>{exp.user.avatar}</span>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <span style={{ fontSize: '14px', fontWeight: '600', color: '#1F2937' }}>{exp.user.name}</span>
+                                            <span style={{ fontSize: '11px', color: '#9CA3AF' }}>{exp.user.babyAge}宝宝</span>
+                                        </div>
+                                        <div style={{ fontSize: '11px', color: '#9CA3AF' }}>{exp.time}</div>
+                                    </div>
+                                    <span style={{ fontSize: '11px', background: '#EFF6FF', color: '#3B82F6', padding: '4px 8px', borderRadius: '6px' }}>#{exp.product}</span>
+                                </div>
+                                
+                                <div style={{ fontSize: '14px', color: '#374151', lineHeight: 1.5, marginBottom: '12px' }}>{exp.content}</div>
+                                
+                                <div style={{ display: 'flex', gap: '12px' }}>
+                                    <button style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '8px 14px', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '20px', fontSize: '12px', color: '#059669', fontWeight: '500' }}>
+                                        <ThumbsUp size={14} />
+                                        我也遇到过 {exp.agrees}
+                                    </button>
+                                    <button style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '8px 14px', background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: '20px', fontSize: '12px', color: '#6B7280' }}>
+                                        <MessageCircle size={14} />
+                                        补充经验
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* 工具导航 */}
+                <div style={{ padding: '0 16px', marginBottom: '16px' }}>
+                    <div style={{ background: 'white', borderRadius: '16px', padding: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-around' }}>
+                            {TOOLS.map((tool) => (
+                                <Link key={tool.id} href={tool.href} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', textDecoration: 'none' }}>
+                                    <div style={{ width: '48px', height: '48px', background: '#F3F4F6', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3B82F6' }}>
+                                        {tool.icon}
+                                    </div>
+                                    <div style={{ fontSize: '13px', fontWeight: '500', color: '#1F2937' }}>{tool.title}</div>
+                                    <div style={{ fontSize: '11px', color: '#9CA3AF' }}>{tool.desc}</div>
+                                </Link>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                {/* 底部导航 */}
+                <div style={{ background: 'white', borderTop: '1px solid #E5E7EB', padding: '10px 16px', display: 'flex', justifyContent: 'space-around', position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: '515px', zIndex: 50 }}>
+                    {[
+                        { id: 'home', icon: '🏠', label: '首页', href: '/', active: true },
+                        { id: 'community', icon: '👥', label: '圈子', href: '/community' },
+                        { id: 'lists', icon: '📋', label: '清单', href: '/lists' },
+                        { id: 'me', icon: '👤', label: '我的', href: '/me' },
+                    ].map((item) => (
+                        <Link key={item.id} href={item.href} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', textDecoration: 'none', color: item.active ? '#3B82F6' : '#6B7280' }}>
+                            <span style={{ fontSize: '22px' }}>{item.icon}</span>
+                            <span style={{ fontSize: '11px' }}>{item.label}</span>
+                        </Link>
+                    ))}
                 </div>
             </div>
-
-            {/* 底部导航 */}
-            <div className="bg-white border-t border-gray-200 px-4 py-2 flex items-center justify-around fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[515px] z-50">
-                {TAB_BAR_ITEMS.map((item) => {
-                    const IconComponent = ICON_MAP[item.icon];
-                    const isActive = activeTab === item.id;
-                    return (
-                        <Link
-                            key={item.id}
-                            href={item.href}
-                            onClick={() => setActiveTab(item.id)}
-                            className="flex flex-col items-center gap-1 relative flex-1"
-                            style={{ color: isActive ? '#3b82f6' : '#6b7280' }}
-                        >
-                            {item.isEmoji ? (
-                                <span className="text-2xl">{item.icon}</span>
-                            ) : IconComponent ? (
-                                <IconComponent className="w-6 h-6" />
-                            ) : (
-                                <span className="text-2xl">{
-                                    item.id === 'decision' ? '❓' :
-                                        item.id === 'pitfall' ? '⚠️' :
-                                            item.id === 'list' ? '📋' :
-                                                item.id === 'circle' ? '👥' : '👤'
-                                }</span>
-                            )}
-                            <span className="text-[11px]">{item.label}</span>
-                            {item.badge && (
-                                <div className="absolute -top-0.5 right-[20%] bg-red-500 text-white text-[10px] px-[5px] py-[2px] rounded-lg">
-                                    {item.badge}
-                                </div>
-                            )}
-                        </Link>
-                    );
-                })}
-            </div>
-        </MobileContainer >
+        </MobileContainer>
     );
 }
