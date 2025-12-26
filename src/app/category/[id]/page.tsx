@@ -122,7 +122,7 @@ export default function CategoryHubPage() {
         params.set('category', categoryId);
         params.set('path', pathId);
         if (tag) params.set('filter', tag);
-        router.push(`/select/results?${params.toString()}`);
+        router.push(`/decision?${params.toString()}`);
     };
 
     return (
