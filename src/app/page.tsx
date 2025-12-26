@@ -175,6 +175,17 @@ export default function HomePage() {
                     ))}
                 </div>
 
+                {/* 进入品类频道入口 */}
+                <Link href={`/category/${activeCategory}`} style={{ textDecoration: 'none' }}>
+                    <div style={{ margin: '0 16px 12px', background: `${currentCategoryInfo.color}08`, border: `1px dashed ${currentCategoryInfo.color}40`, borderRadius: '10px', padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '16px' }}>{currentCategoryInfo.icon}</span>
+                            <span style={{ fontSize: '13px', color: currentCategoryInfo.color, fontWeight: '500' }}>{currentCategoryInfo.name}怎么选？点击查看选购攻略</span>
+                        </div>
+                        <ChevronRight size={16} color={currentCategoryInfo.color} />
+                    </div>
+                </Link>
+
                 {/* 快速选择入口 */}
                 <div style={{ background: 'white', margin: '12px 16px', borderRadius: '16px', padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                     <div style={{ fontSize: '16px', fontWeight: '600', color: '#1F2937', marginBottom: '16px', textAlign: 'center' }}>
