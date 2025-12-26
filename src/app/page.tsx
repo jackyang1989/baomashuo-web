@@ -188,25 +188,28 @@ export default function HomePage() {
 
                 {/* 快速选择入口 */}
                 <div style={{ background: 'white', margin: '12px 16px', borderRadius: '16px', padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-                    <div style={{ fontSize: '16px', fontWeight: '600', color: '#1F2937', marginBottom: '16px', textAlign: 'center' }}>
-                        {currentCategoryInfo.icon} 精选{currentCategoryInfo.name}，3秒匹配
+                    {/* 昨天的亲切标题 */}
+                    <div style={{ fontSize: '15px', fontWeight: '600', color: '#1F2937', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Sparkles size={16} color="#F59E0B" />
+                        告诉我宝宝情况，3秒精选推荐
                     </div>
 
-                    {/* 筛选条件 */}
-                    <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
-                        {/* 月龄/阶段选择 */}
-                        <div style={{ flex: 1, minWidth: '80px', position: 'relative' }}>
+                    {/* 下拉选择器：月龄 + 喂养方式（非问题） */}
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                        {/* 月龄选择 */}
+                        <div style={{ flex: 1, position: 'relative' }}>
                             <button
                                 onClick={() => { setShowAgeDropdown(!showAgeDropdown); setActiveDropdown(null); }}
-                                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', padding: '12px 8px', background: 'white', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', color: selectedAge ? '#1F2937' : '#9CA3AF' }}
+                                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', padding: '10px 8px', background: selectedAge ? '#EFF6FF' : '#F9FAFB', border: selectedAge ? `1px solid ${currentCategoryInfo.color}` : '1px solid #E5E7EB', borderRadius: '20px', fontSize: '13px', color: selectedAge ? currentCategoryInfo.color : '#6B7280' }}
                             >
-                                {selectedAge || (activeCategory === 'accessory' ? '类型' : '月龄')}
-                                <ChevronDown size={14} color="#9CA3AF" />
+                                <Baby size={14} />
+                                {selectedAge || '宝宝月龄'}
+                                <ChevronDown size={14} />
                             </button>
                             {showAgeDropdown && (
-                                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px', background: 'white', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 100, overflow: 'hidden' }}>
+                                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px', background: 'white', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 100, overflow: 'hidden' }}>
                                     {currentConfig.age.map((age) => (
-                                        <button key={age} onClick={() => { setSelectedAge(age); setShowAgeDropdown(false); }} style={{ display: 'block', width: '100%', padding: '10px 12px', border: 'none', background: selectedAge === age ? '#EFF6FF' : 'white', color: selectedAge === age ? '#3B82F6' : '#374151', fontSize: '13px', textAlign: 'left' }}>
+                                        <button key={age} onClick={() => { setSelectedAge(age); setShowAgeDropdown(false); }} style={{ display: 'block', width: '100%', padding: '10px 16px', border: 'none', background: selectedAge === age ? '#EFF6FF' : 'white', color: selectedAge === age ? '#3B82F6' : '#374151', fontSize: '13px', textAlign: 'left' }}>
                                             {age}
                                         </button>
                                     ))}
@@ -214,20 +217,20 @@ export default function HomePage() {
                             )}
                         </div>
 
-                        {/* 动态筛选条件 */}
-                        {currentConfig.options.map((opt) => (
-                            <div key={opt.key} style={{ flex: 1, minWidth: '80px', position: 'relative' }}>
+                        {/* 喂养方式/阶段选择（非问题的第一个选项） */}
+                        {currentConfig.options.filter(opt => opt.key !== 'problem').map((opt) => (
+                            <div key={opt.key} style={{ flex: 1, position: 'relative' }}>
                                 <button
                                     onClick={() => { setActiveDropdown(activeDropdown === opt.key ? null : opt.key); setShowAgeDropdown(false); }}
-                                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', padding: '12px 8px', background: 'white', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', color: selectedFilters[opt.key] ? '#1F2937' : '#9CA3AF' }}
+                                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', padding: '10px 8px', background: selectedFilters[opt.key] ? '#EFF6FF' : '#F9FAFB', border: selectedFilters[opt.key] ? `1px solid ${currentCategoryInfo.color}` : '1px solid #E5E7EB', borderRadius: '20px', fontSize: '13px', color: selectedFilters[opt.key] ? currentCategoryInfo.color : '#6B7280' }}
                                 >
                                     {selectedFilters[opt.key] || opt.label}
-                                    <ChevronDown size={14} color="#9CA3AF" />
+                                    <ChevronDown size={14} />
                                 </button>
                                 {activeDropdown === opt.key && (
-                                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px', background: 'white', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 100, overflow: 'hidden', maxHeight: '200px', overflowY: 'auto' }}>
+                                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px', background: 'white', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 100, overflow: 'hidden' }}>
                                         {opt.values.map((val) => (
-                                            <button key={val} onClick={() => { setSelectedFilters({ ...selectedFilters, [opt.key]: val }); setActiveDropdown(null); }} style={{ display: 'block', width: '100%', padding: '10px 12px', border: 'none', background: selectedFilters[opt.key] === val ? '#EFF6FF' : 'white', color: selectedFilters[opt.key] === val ? '#3B82F6' : '#374151', fontSize: '13px', textAlign: 'left' }}>
+                                            <button key={val} onClick={() => { setSelectedFilters({ ...selectedFilters, [opt.key]: val }); setActiveDropdown(null); }} style={{ display: 'block', width: '100%', padding: '10px 16px', border: 'none', background: selectedFilters[opt.key] === val ? '#EFF6FF' : 'white', color: selectedFilters[opt.key] === val ? '#3B82F6' : '#374151', fontSize: '13px', textAlign: 'left' }}>
                                                 {val}
                                             </button>
                                         ))}
@@ -237,9 +240,27 @@ export default function HomePage() {
                         ))}
                     </div>
 
+                    {/* 昨天的问题标签按钮（直接点选，更直观） */}
+                    {currentConfig.options.filter(opt => opt.key === 'problem').map((opt) => (
+                        <div key={opt.key} style={{ marginBottom: '16px' }}>
+                            <div style={{ fontSize: '12px', color: '#9CA3AF', marginBottom: '8px' }}>常见问题（可选）</div>
+                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                {opt.values.map((problem) => (
+                                    <button
+                                        key={problem}
+                                        onClick={() => setSelectedFilters({ ...selectedFilters, problem: selectedFilters.problem === problem ? '' : problem })}
+                                        style={{ padding: '8px 14px', background: selectedFilters.problem === problem ? '#FEF3C7' : '#F3F4F6', border: selectedFilters.problem === problem ? '1px solid #F59E0B' : '1px solid #E5E7EB', borderRadius: '20px', fontSize: '12px', color: selectedFilters.problem === problem ? '#D97706' : '#6B7280' }}
+                                    >
+                                        {problem}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+
                     <button
                         onClick={handleQuickFilter}
-                        style={{ width: '100%', padding: '14px', background: currentCategoryInfo.color, color: 'white', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '600', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                        style={{ width: '100%', padding: '14px', background: currentCategoryInfo.color, color: 'white', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: '600', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                     >
                         一键进入精选口碑{currentCategoryInfo.name}
                         <ChevronRight size={18} />
